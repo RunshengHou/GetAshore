@@ -37,7 +37,9 @@ const pageTitles = {
 };
 
 async function loadJson(path) {
-  const res = await fetch(path);
+  const cacheBust = `?t=${Date.now()}`;
+  const url = `${path}${path.includes('?') ? '&' : '?'}_=${Date.now()}`;
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`加载失败: ${path}`);
   }
@@ -499,7 +501,7 @@ function bindEvents() {
     renderAll();
   });
 
-  document.getElementById('resetDataBtn').addEventListener('click', async () => {
+  document.getElementById('refreshDataBtn').addEventListener('click', async () => {
     const newUsers = await loadJson('./data/users.json');
     const newModules = await loadJson('./data/modules.json');
     const newRecords = await loadJson('./data/records.json');
