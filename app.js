@@ -126,24 +126,43 @@ function renderSummary() {
 
 function renderHeatmap() {
   const container = document.getElementById('heatmap');
-  const dates = getDateList(state.records).slice(-14);
+  const allDates = getDateList(state.records);
+  const startDate = allDates.length ? new Date(allDates[0]) : new Date();
+  const endDate = allDates.length ? new Date(allDates[allDates.length - 1]) : new Date();
+  const daysToRender = 84;
+  const dayKeys = [];
+
+  for (let i = daysToRender - 1; i >= 0; i -= 1) {
+    const date = new Date(endDate);
+    date.setDate(date.getDate() - i);
+    dayKeys.push(date.toISOString().slice(0, 10));
+  }
 
   container.innerHTML = state.users
     .map((user) => {
-      const cells = dates
+      const cells = dayKeys
         .map((date) => {
           const val = state.records
             .filter((r) => r.person === user.name && r.date === date)
             .reduce((sum, item) => sum + Number(item.questionCount || 0), 0);
-          const level = val >= 35 ? 4 : val >= 20 ? 3 : val >= 10 ? 2 : val >= 5 ? 1 : 0;
-          return `<div class="heatmap-day level-${level}" title="${user.name} / ${date} / ${val}题"></div>`;
+          const level = val >= 40 ? 4 : val >= 25 ? 3 : val >= 10 ? 2 : val >= 4 ? 1 : 0;
+          return `
+            <div
+              class="heatmap-day level-${level}"
+              data-user="${user.name}"
+              data-date="${date}"
+              data-count="${val}"
+              title="${user.name} / ${date} / ${val}题"
+              aria-label="${user.name} 在 ${date} 刷题 ${val} 题"
+            ></div>
+          `;
         })
         .join('');
 
       return `
         <div class="heatmap-user-row">
           <div class="heatmap-label">${user.name}</div>
-          <div class="heatmap-grid">${cells}</div>
+          <div class="heatmap-grid" style="grid-template-columns: repeat(${daysToRender}, 12px);">${cells}</div>
         </div>
       `;
     })
