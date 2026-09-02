@@ -269,8 +269,8 @@ function renderHeatmap() {
   const endDate = new Date();
   const today = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
 
-  // 移动端缩短热力图范围，避免横向溢出
-  const rangeMonths = isCompactHeatmap() ? 3 : 6;
+  // 移动端适度缩短热力图范围（桌面 6 个月 / 移动 5 个月）
+  const rangeMonths = isCompactHeatmap() ? 5 : 6;
   const startDate = new Date(today);
   startDate.setMonth(today.getMonth() - rangeMonths);
 

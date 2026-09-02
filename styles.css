@@ -375,6 +375,11 @@ select {
 
 .panel {
   padding: 18px 18px 16px;
+  min-width: 0;
+}
+
+.panel > * {
+  min-width: 0;
 }
 
 .daily-pie-grid {
@@ -421,6 +426,12 @@ select {
 .chart-wrap {
   position: relative;
   height: 260px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chart-wrap canvas {
+  max-width: 100%;
 }
 
 .chart-wrap--radar {
@@ -1041,11 +1052,11 @@ tbody tr:hover {
   .module-grid,
   .form-grid,
   .two-col {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .module-chart-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1057,7 +1068,7 @@ tbody tr:hover {
   .module-grid,
   .form-grid,
   .two-col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .topbar {
@@ -1108,8 +1119,8 @@ tbody tr:hover {
 
 @media (max-width: 720px) {
   #heatmapContainer {
-    --hm-cell: 8px;
-    --hm-gap: 3px;
-    --hm-dayw: 22px;
+    --hm-cell: 7px;
+    --hm-gap: 2px;
+    --hm-dayw: 20px;
   }
 }
