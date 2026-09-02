@@ -1325,6 +1325,7 @@ function bindEvents() {
   document.querySelectorAll('.nav-item').forEach((button) => {
     button.addEventListener('click', () => {
       setActiveView(button.dataset.view);
+      renderView(button.dataset.view);
     });
   });
 
@@ -1461,10 +1462,8 @@ function bindEvents() {
     ]);
     state.users = users;
     state.modules = modules;
-    await reloadRecordsAndRender();
     populateFilters();
-    renderAll();
-    bindHeatmapTooltip();
+    await reloadRecordsAndRender();
   });
 
   // 跨移动端断点时自动重绘热力图，避免布局残留
@@ -1478,23 +1477,32 @@ function bindEvents() {
   });
 }
 
+function renderView(viewName) {
+  if (viewName === 'overview') {
+    renderSummary();
+    renderDailyPieCharts();
+    renderHeatmap();
+    bindHeatmapTooltip();
+    renderRadarChart();
+    renderLineChart();
+    renderBarChart();
+  } else if (viewName === 'profile') {
+    renderProfileOverview();
+    renderProfileTrend();
+    renderProfileRadar();
+    renderModuleGrid();
+    renderModuleCharts();
+    document.querySelectorAll('.profile-module-button').forEach((button) => {
+      button.classList.toggle('active', button.dataset.module === state.profileModule);
+    });
+  } else if (viewName === 'table') {
+    renderTable();
+  }
+  // form 视图无动态图表
+}
+
 function renderAll() {
-  renderSummary();
-  renderDailyPieCharts();
-  renderHeatmap();
-  bindHeatmapTooltip();
-  renderRadarChart();
-  renderLineChart();
-  renderBarChart();
-  renderProfileOverview();
-  renderProfileTrend();
-  renderProfileRadar();
-  renderModuleGrid();
-  renderModuleCharts();
-  document.querySelectorAll('.profile-module-button').forEach((button) => {
-    button.classList.toggle('active', button.dataset.module === state.profileModule);
-  });
-  renderTable();
+  renderView(state.activeView);
 }
 
 async function init() {
@@ -1512,14 +1520,20 @@ async function init() {
 
     // 先用会话缓存立即渲染，避免白屏/停顿感；随后用 Worker 最新数据整体刷新
     const cachedRecords = cacheGet('records');
+    let renderedFromCache = false;
     if (cachedRecords && Array.isArray(cachedRecords)) {
       state.records = mergeRecords(cachedRecords);
       renderAll();
+      renderedFromCache = true;
     }
 
     const remote = await fetchRemoteRecords();
-    state.records = mergeRecords(remote);
-    renderAll();
+    const nextRecords = mergeRecords(remote);
+    // 数据没有变化时跳过第二次全量渲染
+    if (!renderedFromCache || JSON.stringify(nextRecords) !== JSON.stringify(state.records)) {
+      state.records = nextRecords;
+      renderAll();
+    }
   } catch (error) {
     console.error(error);
     document.body.innerHTML = `<div style="padding: 40px; color: #c00; font-family:sans-serif;">数据加载失败，请检查 data 目录是否存在。</div>`;
