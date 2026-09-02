@@ -93,10 +93,10 @@
 
               <article class="panel">
                 <div class="panel-header">
-                  <h2>模块正确率对比</h2>
+                  <h2>每日刷题趋势</h2>
                 </div>
-                <div class="chart-wrap chart-wrap--radar">
-                  <canvas id="radarChart"></canvas>
+                <div class="chart-wrap">
+                  <canvas id="lineChart"></canvas>
                 </div>
               </article>
             </section>
@@ -104,10 +104,10 @@
             <section class="panel-grid two-col">
               <article class="panel">
                 <div class="panel-header">
-                  <h2>每日刷题趋势</h2>
+                  <h2>模块正确率对比</h2>
                 </div>
-                <div class="chart-wrap">
-                  <canvas id="lineChart"></canvas>
+                <div class="chart-wrap chart-wrap--radar">
+                  <canvas id="radarChart"></canvas>
                 </div>
               </article>
 
@@ -120,6 +120,8 @@
                 </div>
               </article>
             </section>
+
+            <section id="dailyPieCharts" class="panel-grid two-col daily-pie-grid"></section>
           </section>
 
           <section class="view-section" data-view="profile">

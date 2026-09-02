@@ -78,8 +78,15 @@ function getFilteredRecords() {
   });
 }
 
+function formatLocalDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
+  return formatLocalDate(new Date());
 }
 
 function renderSummary() {
@@ -124,124 +131,210 @@ function renderSummary() {
     .join('');
 }
 
+function renderDailyPieCharts() {
+  const container = document.getElementById('dailyPieCharts');
+  const today = getTodayDate();
+
+  Object.values(state.charts)
+    .filter((chart) => chart && chart.canvas && chart.canvas.id.startsWith('dailyPieChart-'))
+    .forEach((chart) => chart.destroy());
+
+  container.innerHTML = state.users
+    .map(
+      (user) => `
+        <article class="panel daily-pie-item">
+          <div class="panel-header">
+            <h2>${user.name} 今日刷题构成</h2>
+          </div>
+          <div class="daily-pie-title">${user.name}<span>${today}</span></div>
+          <div class="daily-pie-wrap">
+            <canvas id="dailyPieChart-${user.name}"></canvas>
+          </div>
+        </article>
+      `
+    )
+    .join('');
+
+  state.users.forEach((user) => {
+    const moduleTotals = state.modules.map((module) =>
+      state.records
+        .filter((record) => record.person === user.name && record.date === today && record.module === module.id)
+        .reduce((sum, record) => sum + Number(record.questionCount || 0), 0)
+    );
+
+    state.charts[`dailyPie-${user.name}`] = new Chart(
+      document.getElementById(`dailyPieChart-${user.name}`),
+      {
+        type: 'doughnut',
+        data: {
+          labels: state.modules.map((module) => module.name),
+          datasets: [{
+            data: moduleTotals,
+            backgroundColor: state.modules.map((module) => MODULE_COLORS[module.id]),
+            borderColor: '#ffffff',
+            borderWidth: 3,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '58%',
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                label: (context) => `${context.label}: ${context.raw} 题`,
+              },
+            },
+          },
+        },
+      }
+    );
+  });
+}
+
 function renderHeatmap() {
   const container = document.getElementById('heatmapContainer');
   container.innerHTML = '';
 
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayMs = 24 * 60 * 60 * 1000;
+  const endDate = new Date();
+  const today = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+  const startDate = new Date(today);
+  startDate.setMonth(today.getMonth() - 6);
+
+  const gridStart = new Date(startDate);
+  gridStart.setDate(startDate.getDate() - startDate.getDay());
+
+  const gridEnd = new Date(today);
+  gridEnd.setDate(today.getDate() + (6 - today.getDay()));
+
+  const totalWeeks = Math.floor((gridEnd - gridStart) / dayMs / 7) + 1;
+
+  const tooltip = document.getElementById('heatmapTooltip') || document.createElement('div');
+  tooltip.id = 'heatmapTooltip';
+  tooltip.className = 'heatmap-tooltip';
+  if (!document.body.contains(tooltip)) {
+    document.body.appendChild(tooltip);
+  }
+
   state.users.forEach((user) => {
-    // 为每个用户创建一个容器
-    const userChartDiv = document.createElement('div');
-    userChartDiv.style.height = '140px';
-    userChartDiv.style.width = '100%';
-    container.appendChild(userChartDiv);
-
-    // 准备数据
-    let data = state.records
+    const dataMap = state.records
       .filter((r) => r.person === user.name)
-      .map((r) => [r.date, Number(r.questionCount || 0)])
-      .sort((a, b) => a[0].localeCompare(b[0]));
+      .reduce((dailyTotals, record) => {
+        const currentTotal = dailyTotals.get(record.date) || 0;
+        dailyTotals.set(record.date, currentTotal + Number(record.questionCount || 0));
+        return dailyTotals;
+      }, new Map());
 
-    // 计算最近84天的范围（12周）
-    const today = new Date();
-    const maxDate = new Date(today);
-    const minDate = new Date(today);
-    minDate.setDate(minDate.getDate() - 83); // 83天前，加上今天共84天
+    const monthLabels = [];
+    const monthTracker = new Map();
+    const cells = [];
 
-    const minDateStr = minDate.toISOString().slice(0, 10);
-    const maxDateStr = maxDate.toISOString().slice(0, 10);
+    const current = new Date(gridStart);
+    while (current <= today) {
+      const dateStr = formatLocalDate(current);
+      const weekIndex = Math.floor((current - gridStart) / dayMs / 7);
+      const dayIndex = current.getDay();
+      const count = dataMap.get(dateStr) || 0;
+      const level = count === 0 ? 0 : Math.min(4, Math.ceil(count / 10));
 
-    // 创建一个日期集合方便查找
-    const dataMap = new Map(data);
+      if (current.getDate() === 1) {
+        const monthKey = `${current.getFullYear()}-${current.getMonth()}`;
+        if (!monthTracker.has(monthKey)) {
+          monthTracker.set(monthKey, true);
+          monthLabels.push({
+            label: new Intl.DateTimeFormat('en-US', { month: 'short' }).format(current),
+            weekIndex,
+          });
+        }
+      }
 
-    // 填充所有日期（包括没有数据的日期，显示为 0）
-    const allDates = [];
-    for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().slice(0, 10);
-      const count = dataMap.has(dateStr) ? dataMap.get(dateStr) : 0;
-      allDates.push([dateStr, count]);
+      cells.push({
+        dateStr,
+        count,
+        weekIndex,
+        dayIndex,
+        level,
+      });
+
+      current.setDate(current.getDate() + 1);
     }
 
-    // 初始化 ECharts
-    const chart = echarts.init(userChartDiv);
-    state.charts[`heatmap_${user.name}`] = chart;
+    const showMonthLabels = user.name !== 'B';
 
-    // ECharts 配置
-    const option = {
-      title: {
-        text: `${user.name}`,
-        left: 0,
-        top: 0,
-        textStyle: {
-          fontSize: 14,
-          fontWeight: 700,
-          color: '#1e2433',
-        },
-      },
-      tooltip: {
-        formatter: (params) => {
-          if (params.componentSubType === 'heatmap') {
-            const date = params.value[0];
-            const monthDay = date.slice(5); // 取 MM-DD
-            return `${monthDay}<br/>${params.value[1]} 题`;
-          }
-          return '';
-        },
-      },
-      calendar: {
-        range: [minDateStr, maxDateStr],
-        cellSize: [13, 13],
-        left: 50,
-        top: 50,
-        splitLine: {
-          show: false,
-        },
-        itemStyle: {
-          borderColor: 'rgba(27, 31, 35, 0.04)',
-          borderWidth: 1,
-        },
-        dayLabel: {
-          nameMap: ['', 'Mon', '', 'Wed', '', 'Fri', ''],
-          firstDay: 0,
-          textStyle: {
-            color: '#94a3b8',
-            fontSize: 11,
-          },
-        },
-        monthLabel: {
-          show: false,
-        },
-      },
-      visualMap: {
-        show: false,
-        min: 0,
-        max: 50,
-        inRange: {
-          color: ['#ebedf0', '#c7e9c0', '#7bc87c', '#2fae66', '#1f7a3f'],
-        },
-      },
-      series: [
-        {
-          type: 'heatmap',
-          coordinateSystem: 'calendar',
-          data: allDates,
-          itemStyle: {
-            borderRadius: 2,
-          },
-        },
-      ],
-    };
+    const heatmapMarkup = `
+      <div class="heatmap-user-row">
+        <div class="heatmap-label">${user.name}</div>
+        <div class="heatmap-content">
+          ${showMonthLabels ? `
+            <div class="heatmap-months" style="grid-template-columns: repeat(${totalWeeks}, 12px);">
+              ${monthLabels
+                .map(
+                  (item) => `
+                    <div class="month-label" style="grid-column: ${item.weekIndex + 1};">
+                      ${item.label}
+                    </div>
+                  `
+                )
+                .join('')}
+            </div>
+          ` : ''}
+          <div class="heatmap-calendar">
+            <div class="heatmap-days">
+              ${dayNames
+                .map(
+                  (day, index) => `
+                    <div class="day-label" style="grid-row: ${index + 1};">${day}</div>
+                  `
+                )
+                .join('')}
+            </div>
+            <div class="heatmap-grid" style="grid-template-columns: repeat(${totalWeeks}, 12px); grid-template-rows: repeat(7, 12px);">
+              ${cells
+                .map(
+                  (cell) => `
+                    <div
+                      class="heatmap-day level-${cell.level}"
+                      style="grid-column: ${cell.weekIndex + 1}; grid-row: ${cell.dayIndex + 1};"
+                      data-date="${cell.dateStr}"
+                      data-count="${cell.count}"
+                      aria-label="${cell.dateStr} ${cell.count}题"
+                    ></div>
+                  `
+                )
+                .join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
 
-    chart.setOption(option);
+    container.insertAdjacentHTML('beforeend', heatmapMarkup);
 
-    // 隐藏 ECharts 生成的年份文字
-    setTimeout(() => {
-      const textElements = userChartDiv.querySelectorAll('text');
-      textElements.forEach((el) => {
-        if (el.textContent.includes('2026')) {
-          el.style.display = 'none';
-        }
+    const insertedUserRow = container.lastElementChild;
+    const dayCells = insertedUserRow.querySelectorAll('.heatmap-day');
+    dayCells.forEach((cell) => {
+      cell.addEventListener('mouseenter', (event) => {
+        const date = cell.dataset.date;
+        const count = Number(cell.dataset.count || 0);
+        tooltip.innerHTML = `<strong>${date}</strong><br>${count} 题`;
+        tooltip.style.display = 'block';
+        tooltip.style.left = `${event.clientX + 12}px`;
+        tooltip.style.top = `${event.clientY + 12}px`;
       });
-    }, 100);
+
+      cell.addEventListener('mousemove', (event) => {
+        tooltip.style.left = `${event.clientX + 12}px`;
+        tooltip.style.top = `${event.clientY + 12}px`;
+      });
+
+      cell.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+      });
+    });
   });
 }
 
@@ -679,6 +772,7 @@ function bindEvents() {
 
 function renderAll() {
   renderSummary();
+  renderDailyPieCharts();
   renderHeatmap();
   bindHeatmapTooltip();
   renderRadarChart();
