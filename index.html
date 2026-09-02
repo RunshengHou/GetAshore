@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
   </head>
   <body>
     <div class="app-layout">
@@ -87,7 +88,7 @@
                 <div class="panel-header">
                   <h2>刷题活跃热力图</h2>
                 </div>
-                <div id="heatmap" class="heatmap"></div>
+                <div id="heatmapContainer" style="display: flex; flex-direction: column; gap: 24px;"></div>
               </article>
 
               <article class="panel">

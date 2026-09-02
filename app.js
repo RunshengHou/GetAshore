@@ -125,77 +125,96 @@ function renderSummary() {
 }
 
 function renderHeatmap() {
-  const container = document.getElementById('heatmap');
-  const allDates = getDateList(state.records);
-  const endDate = allDates.length ? new Date(allDates[allDates.length - 1]) : new Date();
-  const daysToRender = 84;
-  const dayKeys = [];
+  const container = document.getElementById('heatmapContainer');
+  container.innerHTML = '';
 
-  for (let i = daysToRender - 1; i >= 0; i -= 1) {
-    const date = new Date(endDate);
-    date.setDate(date.getDate() - i);
-    dayKeys.push(date.toISOString().slice(0, 10));
-  }
+  state.users.forEach((user) => {
+    // 为每个用户创建一个容器
+    const userChartDiv = document.createElement('div');
+    userChartDiv.style.height = '140px';
+    userChartDiv.style.width = '100%';
+    container.appendChild(userChartDiv);
 
-  const weeksInView = Math.ceil(daysToRender / 7);
-  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // 准备数据
+    const data = state.records
+      .filter((r) => r.person === user.name)
+      .map((r) => [r.date, Number(r.questionCount || 0)])
+      .sort((a, b) => a[0].localeCompare(b[0]));
 
-  // 生成月份标签
-  const monthMarkers = {};
-  dayKeys.forEach((date, index) => {
-    const d = new Date(`${date}T00:00:00`);
-    const monthKey = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-    const weekIndex = Math.floor(index / 7);
-    if (!monthMarkers[monthKey]) {
-      monthMarkers[monthKey] = weekIndex;
-    }
+    // 获取日期范围
+    const dates = data.map((d) => d[0]);
+    const minDate = dates.length ? dates[0] : new Date().toISOString().slice(0, 10);
+    const maxDate = dates.length ? dates[dates.length - 1] : new Date().toISOString().slice(0, 10);
+
+    // 初始化 ECharts
+    const chart = echarts.init(userChartDiv);
+    state.charts[`heatmap_${user.name}`] = chart;
+
+    // ECharts 配置
+    const option = {
+      title: {
+        text: `${user.name}`,
+        left: 0,
+        top: 0,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 700,
+          color: '#1e2433',
+        },
+      },
+      tooltip: {
+        formatter: (params) => {
+          if (params.componentSubType === 'heatmap') {
+            return `${params.value[0]}<br/>${params.value[1]} 题`;
+          }
+          return '';
+        },
+      },
+      visualMap: {
+        min: 0,
+        max: 50,
+        inRange: {
+          color: ['#ebedf0', '#c7e9c0', '#7bc87c', '#2fae66', '#1f7a3f'],
+        },
+        calculable: false,
+        orient: 'horizontal',
+        right: '10%',
+        top: 0,
+      },
+      calendar: {
+        range: [minDate, maxDate],
+        cellSize: [13, 13],
+        left: 50,
+        top: 50,
+        splitLine: {
+          show: false,
+        },
+        itemStyle: {
+          borderColor: 'rgba(27, 31, 35, 0.04)',
+          borderWidth: 1,
+        },
+        dayLabel: {
+          nameMap: 'cn',
+          firstDay: 1,
+        },
+        monthLabel: {
+          nameMap: 'cn',
+        },
+      },
+      series: [
+        {
+          type: 'heatmap',
+          coordinateSystem: 'calendar',
+          data: data,
+          itemStyle: {
+            borderRadius: 2,
+          },
+        },
+      ],
+    };
+
+    chart.setOption(option);
   });
-
-  const monthLabelsHtml = Object.entries(monthMarkers)
-    .map(([month, weekIndex]) => `<div class="month-label" style="grid-column: ${weekIndex + 1};">${month}</div>`)
-    .join('');
-
-  container.innerHTML = state.users
-    .map((user) => {
-      const cells = dayKeys
-        .map((date, index) => {
-          const val = state.records
-            .filter((r) => r.person === user.name && r.date === date)
-            .reduce((sum, item) => sum + Number(item.questionCount || 0), 0);
-          const level = val >= 40 ? 4 : val >= 25 ? 3 : val >= 10 ? 2 : val >= 4 ? 1 : 0;
-          const weekIndex = Math.floor(index / 7);
-          const dayOfWeek = new Date(`${date}T00:00:00`).getDay() || 7;
-
-          return `
-            <div
-              class="heatmap-day level-${level}"
-              data-user="${user.name}"
-              data-date="${date}"
-              data-count="${val}"
-              title="${user.name} / ${date} / ${val}题"
-              aria-label="${user.name} 在 ${date} 刷题 ${val} 题"
-              style="grid-column: ${weekIndex + 1}; grid-row: ${dayOfWeek + 1};"
-            ></div>
-          `;
-        })
-        .join('');
-
-      const dayLabelsRow = dayLabels
-        .map((label, idx) => `<div class="day-label" style="grid-row: ${idx + 2};">${label}</div>`)
-        .join('');
-
-      return `
-        <div class="heatmap-user-row">
-          <div class="heatmap-label">${user.name}</div>
-          <div class="heatmap-container" style="--weeks: ${weeksInView};">
-            <div class="heatmap-months">${monthLabelsHtml}</div>
-            <div class="heatmap-days">${dayLabelsRow}</div>
-            <div class="heatmap-grid" style="grid-template-columns: repeat(${weeksInView}, 12px); grid-template-rows: repeat(7, 12px);">${cells}</div>
-          </div>
-        </div>
-      `;
-    })
-    .join('');
 }
 
 function renderRadarChart() {
@@ -568,29 +587,7 @@ function setActiveView(viewName) {
 }
 
 function bindHeatmapTooltip() {
-  const heatmapDays = document.querySelectorAll('.heatmap-day');
-  const tooltip = document.createElement('div');
-  tooltip.className = 'heatmap-tooltip';
-  document.body.appendChild(tooltip);
-
-  heatmapDays.forEach((day) => {
-    day.addEventListener('mouseenter', () => {
-      const date = day.dataset.date;
-      const count = day.dataset.count;
-      tooltip.textContent = `${date} · ${count} 题`;
-      tooltip.style.display = 'block';
-    });
-
-    day.addEventListener('mousemove', (e) => {
-      const rect = day.getBoundingClientRect();
-      tooltip.style.left = `${rect.left + rect.width / 2}px`;
-      tooltip.style.top = `${rect.top - 36}px`;
-    });
-
-    day.addEventListener('mouseleave', () => {
-      tooltip.style.display = 'none';
-    });
-  });
+  // ECharts 已经内置悬停提示，不需要额外处理
 }
 
 function bindEvents() {
