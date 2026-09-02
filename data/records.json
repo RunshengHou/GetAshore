@@ -318,5 +318,15 @@
     "correctCount": 14,
     "durationMinutes": 28,
     "note": ""
+  },
+  {
+    "id": 1788328212431,
+    "date": "2026-09-02",
+    "person": "升",
+    "module": "logic",
+    "questionCount": 5,
+    "correctCount": 4,
+    "durationMinutes": 10,
+    "note": "test"
   }
 ]
