@@ -232,6 +232,16 @@ function renderHeatmap() {
     };
 
     chart.setOption(option);
+
+    // 隐藏 ECharts 生成的年份文字
+    setTimeout(() => {
+      const textElements = userChartDiv.querySelectorAll('text');
+      textElements.forEach((el) => {
+        if (el.textContent.includes('2026')) {
+          el.style.display = 'none';
+        }
+      });
+    }, 100);
   });
 }
 
