@@ -138,6 +138,22 @@ function renderHeatmap() {
   }
 
   const weeksInView = Math.ceil(daysToRender / 7);
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  // 生成月份标签
+  const monthMarkers = {};
+  dayKeys.forEach((date, index) => {
+    const d = new Date(`${date}T00:00:00`);
+    const monthKey = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    const weekIndex = Math.floor(index / 7);
+    if (!monthMarkers[monthKey]) {
+      monthMarkers[monthKey] = weekIndex;
+    }
+  });
+
+  const monthLabelsHtml = Object.entries(monthMarkers)
+    .map(([month, weekIndex]) => `<div class="month-label" style="grid-column: ${weekIndex + 1};">${month}</div>`)
+    .join('');
 
   container.innerHTML = state.users
     .map((user) => {
@@ -148,7 +164,7 @@ function renderHeatmap() {
             .reduce((sum, item) => sum + Number(item.questionCount || 0), 0);
           const level = val >= 40 ? 4 : val >= 25 ? 3 : val >= 10 ? 2 : val >= 4 ? 1 : 0;
           const weekIndex = Math.floor(index / 7);
-          const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+          const dayOfWeek = new Date(`${date}T00:00:00`).getDay() || 7;
 
           return `
             <div
@@ -164,10 +180,18 @@ function renderHeatmap() {
         })
         .join('');
 
+      const dayLabelsRow = dayLabels
+        .map((label, idx) => `<div class="day-label" style="grid-row: ${idx + 2};">${label}</div>`)
+        .join('');
+
       return `
         <div class="heatmap-user-row">
           <div class="heatmap-label">${user.name}</div>
-          <div class="heatmap-grid" style="grid-template-columns: repeat(${weeksInView}, 12px); grid-template-rows: repeat(7, 12px);">${cells}</div>
+          <div class="heatmap-container" style="--weeks: ${weeksInView};">
+            <div class="heatmap-months">${monthLabelsHtml}</div>
+            <div class="heatmap-days">${dayLabelsRow}</div>
+            <div class="heatmap-grid" style="grid-template-columns: repeat(${weeksInView}, 12px); grid-template-rows: repeat(7, 12px);">${cells}</div>
+          </div>
         </div>
       `;
     })

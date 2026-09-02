@@ -358,22 +358,71 @@ select {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  margin-bottom: 16px;
 }
 
 .heatmap-label {
-  width: 22px;
-  margin-top: 2px;
+  width: 28px;
+  margin-top: 24px;
   font-size: 12px;
   font-weight: 700;
   color: var(--muted);
+  flex-shrink: 0;
+}
+
+.heatmap-container {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  grid-template-rows: auto auto;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.heatmap-months {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  gap: 4px;
+  padding-bottom: 4px;
+  overflow: hidden;
+  height: 20px;
+}
+
+.month-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heatmap-days {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.day-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  width: 28px;
+  text-align: right;
 }
 
 .heatmap-grid {
+  grid-column: 2;
+  grid-row: 2;
   display: grid;
   gap: 4px;
   flex: 1;
   min-width: 0;
-  overflow: hidden;
   width: max-content;
   padding: 2px 0;
 }
