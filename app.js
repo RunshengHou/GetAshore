@@ -648,28 +648,44 @@ function renderProfileOverview() {
   const durationSum = records.reduce((sum, r) => sum + Number(r.durationMinutes || 0), 0);
   const avgMinutes = records.length ? durationSum / records.length : 0;
 
-  container.innerHTML = `
-    <div class="profile-card profile-card--${user.name}">
-      <div class="person">累计刷题总数</div>
-      <p class="value">${totalQ}</p>
-      <div class="detail">${dates.size} 个活跃日</div>
-    </div>
-    <div class="profile-card profile-card--${user.name}">
-      <div class="person">累计答对数量</div>
-      <p class="value">${totalC}</p>
-      <div class="detail">综合正确率 ${formatPercent(avgAccuracy)}</div>
-    </div>
-    <div class="profile-card profile-card--${user.name}">
-      <div class="person">平均正确率</div>
-      <p class="value">${formatPercent(avgAccuracy)}</p>
-      <div class="detail">基于 ${totalQ} 道题</div>
-    </div>
-    <div class="profile-card profile-card--${user.name}">
-      <div class="person">平均用时</div>
-      <p class="value">${avgMinutes.toFixed(1)}<small> 分</small></p>
-      <div class="detail">共 ${records.length} 条记录</div>
-    </div>
-  `;
+  const personalCards = [
+    {
+      label: '累计刷题总数',
+      value: `${totalQ}`,
+      sub: `${dates.size} 个活跃日`,
+      tone: 'primary',
+    },
+    {
+      label: '累计答对数量',
+      value: `${totalC}`,
+      sub: `综合正确率 ${formatPercent(avgAccuracy)}`,
+      tone: 'orange',
+    },
+    {
+      label: '平均正确率',
+      value: formatPercent(avgAccuracy),
+      sub: `基于 ${totalQ} 道题`,
+      tone: 'green',
+    },
+    {
+      label: '平均用时',
+      value: `${avgMinutes.toFixed(1)}<small> 分</small>`,
+      sub: `共 ${records.length} 条记录`,
+      tone: 'purple',
+    },
+  ];
+
+  container.innerHTML = personalCards
+    .map(
+      (card) => `
+        <div class="summary-card ${card.tone}">
+          <div class="label"><span>${card.label}</span><span class="dot"></span></div>
+          <div class="value">${card.value}</div>
+          <div class="sub">${card.sub}</div>
+        </div>
+      `
+    )
+    .join('');
 
   document.querySelectorAll('.profile-person-button').forEach((button) => {
     button.classList.toggle('active', button.dataset.person === user.name);
@@ -724,22 +740,22 @@ function renderModuleGrid() {
                 <span>${user.name} · 近期开题表现</span>
               </div>
               <div class="module-stat-cards">
-                <div class="summary-card profile-card profile-card--${user.name}">
+                <div class="summary-card primary">
                   <div class="label"><span>总题数</span><span class="dot"></span></div>
                   <div class="value">${totalQ}</div>
                   <div class="sub">累计刷题数量</div>
                 </div>
-                <div class="summary-card profile-card profile-card--${user.name}">
+                <div class="summary-card orange">
                   <div class="label"><span>答对数量</span><span class="dot"></span></div>
                   <div class="value">${totalC}</div>
                   <div class="sub">累计答对题目</div>
                 </div>
-                <div class="summary-card profile-card profile-card--${user.name}">
+                <div class="summary-card green">
                   <div class="label"><span>正确率</span><span class="dot"></span></div>
                   <div class="value">${formatPercent(avgAccuracy)}</div>
                   <div class="sub">模块综合表现</div>
                 </div>
-                <div class="summary-card profile-card profile-card--${user.name}">
+                <div class="summary-card purple">
                   <div class="label"><span>平均用时</span><span class="dot"></span></div>
                   <div class="value">${avgSeconds.toFixed(0)}<small> 秒</small></div>
                   <div class="sub">每题平均耗时</div>

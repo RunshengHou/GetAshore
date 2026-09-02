@@ -357,6 +357,13 @@ select {
   letter-spacing: -0.06em;
 }
 
+.summary-card .value small {
+  font-size: 14px;
+  letter-spacing: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .summary-card .sub {
   margin-top: 8px;
   font-size: 12px;
