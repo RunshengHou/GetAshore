@@ -96,7 +96,11 @@ export default {
         // 文件尚不存在，从空数组开始
         records = [];
       } else if (!getResponse.ok) {
-        return jsonResponse({ ok: false, error: `读取记录失败: ${getResponse.status}` }, 502);
+        const bodyText = await getResponse.text();
+        return jsonResponse(
+          { ok: false, error: `读取记录失败: ${getResponse.status}`, detail: bodyText.slice(0, 400) },
+          502
+        );
       } else {
         const fileData = await getResponse.json();
         sha = fileData.sha;
