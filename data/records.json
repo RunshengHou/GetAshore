@@ -258,5 +258,65 @@
     "correctCount": 15,
     "durationMinutes": 32,
     "note": ""
+  },
+  {
+    "id": 27,
+    "date": "2026-09-02",
+    "person": "A",
+    "module": "politics",
+    "questionCount": 18,
+    "correctCount": 15,
+    "durationMinutes": 26,
+    "note": ""
+  },
+  {
+    "id": 28,
+    "date": "2026-09-02",
+    "person": "A",
+    "module": "quantity",
+    "questionCount": 24,
+    "correctCount": 19,
+    "durationMinutes": 36,
+    "note": ""
+  },
+  {
+    "id": 29,
+    "date": "2026-09-02",
+    "person": "A",
+    "module": "logic",
+    "questionCount": 20,
+    "correctCount": 16,
+    "durationMinutes": 30,
+    "note": ""
+  },
+  {
+    "id": 30,
+    "date": "2026-09-02",
+    "person": "B",
+    "module": "language",
+    "questionCount": 22,
+    "correctCount": 17,
+    "durationMinutes": 33,
+    "note": ""
+  },
+  {
+    "id": 31,
+    "date": "2026-09-02",
+    "person": "B",
+    "module": "data",
+    "questionCount": 26,
+    "correctCount": 20,
+    "durationMinutes": 39,
+    "note": ""
+  },
+  {
+    "id": 32,
+    "date": "2026-09-02",
+    "person": "B",
+    "module": "logic",
+    "questionCount": 18,
+    "correctCount": 14,
+    "durationMinutes": 28,
+    "note": ""
   }
 ]
