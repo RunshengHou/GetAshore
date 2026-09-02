@@ -256,8 +256,14 @@ function renderBarChart() {
         .filter((r) => r.person === name && r.date === today && r.module === module.id)
         .reduce((sum, item) => sum + Number(item.questionCount || 0), 0)
     ),
-    backgroundColor: MODULE_COLORS[module.id],
+    backgroundColor: `${MODULE_COLORS[module.id]}cc`,
+    borderColor: MODULE_COLORS[module.id],
+    borderWidth: 1.5,
+    borderRadius: 10,
+    borderSkipped: false,
     stack: 'questions',
+    barPercentage: 0.72,
+    categoryPercentage: 0.7,
   }));
 
   if (state.charts.bar) {
@@ -273,13 +279,71 @@ function renderBarChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      layout: {
+        padding: {
+          top: 10,
+          right: 8,
+          left: 8,
+          bottom: 0,
+        },
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#475569',
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 10,
+            boxHeight: 10,
+            padding: 16,
+            font: {
+              weight: '600',
+            },
+          },
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleColor: '#f8fafc',
+          bodyColor: '#e2e8f0',
+          borderWidth: 0,
+          padding: 10,
+          displayColors: true,
+        },
+      },
       scales: {
-        x: { stacked: true },
+        x: {
+          stacked: true,
+          grid: {
+            display: false,
+            drawBorder: false,
+          },
+          ticks: {
+            color: '#475569',
+            font: {
+              weight: '600',
+            },
+          },
+        },
         y: {
           stacked: true,
           beginAtZero: true,
-          title: { display: true, text: '题目数量' },
+          grid: {
+            color: 'rgba(148, 163, 184, 0.18)',
+            drawBorder: false,
+          },
+          ticks: {
+            color: '#475569',
+            stepSize: 10,
+          },
+          title: {
+            display: true,
+            text: '题目数量',
+            color: '#334155',
+            font: {
+              weight: '700',
+            },
+          },
         },
       },
     },
