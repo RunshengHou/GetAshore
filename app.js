@@ -12,11 +12,11 @@ const PERSON_COLORS = {
 };
 
 const MODULE_COLORS = {
-  politics: '#2f5ae0',
-  quantity: '#1f9d8a',
-  language: '#d97706',
-  logic: '#d9485f',
-  data: '#6d5ef2',
+  politics: '#4aa3a2',
+  quantity: '#6bbd99',
+  language: '#8ecae6',
+  logic: '#a3c9a8',
+  data: '#5b8def',
 };
 
 const state = {
