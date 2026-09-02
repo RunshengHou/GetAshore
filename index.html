@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260902" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
   </head>
@@ -75,20 +75,17 @@
             <h1 id="pageTitle">今日总体看板</h1>
           </div>
           <div class="topbar-actions">
+            <div class="topbar-date-control" id="overviewDateControl">
+              <label for="overviewDate">统计日期</label>
+              <input type="date" id="overviewDate" />
+              <button class="date-today-btn" id="overviewTodayBtn" type="button">回到今天</button>
+            </div>
             <button class="ghost-btn" id="refreshDataBtn" type="button">刷新数据</button>
           </div>
         </header>
 
         <main class="content-area">
           <section class="view-section active" data-view="overview">
-            <div class="overview-toolbar">
-              <div class="overview-date-field">
-                <label for="overviewDate">统计日期</label>
-                <input type="date" id="overviewDate" max="2099-12-31" />
-                <button class="ghost-btn date-today-btn" id="overviewTodayBtn" type="button">回到今天</button>
-              </div>
-            </div>
-
             <section class="summary-grid" id="summaryGrid"></section>
 
             <section class="panel-grid two-col">
@@ -230,6 +227,6 @@
       </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260902"></script>
   </body>
 </html>

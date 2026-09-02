@@ -7,25 +7,25 @@ const MODULE_LABELS = {
 };
 
 const PERSON_COLORS = {
-  升: '#5470e6',
-  强: '#9a6df0',
+  升: '#4e9cf5',
+  强: '#a06cf5',
 };
 
 const PERSON_CHART_COLORS = {
-  升: ['#5470e6', '#7aa2ff', '#bcd0ff'],
-  强: ['#9a6df0', '#b68cf6', '#dcc4ff'],
+  升: ['#4e9cf5', '#7cb9f8', '#c0ddff'],
+  强: ['#a06cf5', '#bd93f9', '#e2d2ff'],
 };
 
 const MODULE_COLORS = {
-  politics: '#58b8ad',
-  quantity: '#f2b25f',
-  language: '#64b0ea',
-  logic: '#eb9683',
-  data: '#97c96d',
+  politics: '#3fc1b4',
+  quantity: '#ffb454',
+  language: '#5aa9f5',
+  logic: '#ff8aa1',
+  data: '#8cd06a',
 };
 
-const CHART_TEXT_COLOR = '#5b6b80';
-const CHART_GRID_COLOR = 'rgba(91, 107, 128, 0.14)';
+const CHART_TEXT_COLOR = '#5f7087';
+const CHART_GRID_COLOR = 'rgba(95, 112, 135, 0.15)';
 const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
 const WORKER_URL = 'https://getashore.hourunsheng.workers.dev';
 
@@ -578,9 +578,9 @@ function renderBarChart() {
           },
         },
         tooltip: {
-          backgroundColor: '#285d61',
+          backgroundColor: '#31465f',
           titleColor: '#ffffff',
-          bodyColor: '#effffc',
+          bodyColor: '#f4f8fc',
           borderWidth: 0,
           padding: 10,
           displayColors: true,
@@ -993,6 +993,11 @@ function setActiveView(viewName) {
   if (titleEl) {
     titleEl.textContent = pageTitles[viewName] || '数据看板';
   }
+
+  const dateControl = document.getElementById('overviewDateControl');
+  if (dateControl) {
+    dateControl.style.display = viewName === 'overview' ? '' : 'none';
+  }
 }
 
 function bindHeatmapTooltip() {
@@ -1026,6 +1031,10 @@ function bindEvents() {
   });
 
   document.getElementById('overviewDate').addEventListener('change', (e) => {
+    applyOverviewDate(e.target.value);
+  });
+
+  document.getElementById('overviewDate').addEventListener('input', (e) => {
     applyOverviewDate(e.target.value);
   });
 
