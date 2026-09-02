@@ -82,6 +82,30 @@ function mergeRecords(staticRecords) {
   return staticRecords.concat(localRecords.filter((record) => !staticIds.has(String(record.id))));
 }
 
+function removeLocalRecordById(id) {
+  const records = getLocalRecords().filter((record) => String(record.id) !== String(id));
+  localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(records));
+}
+
+async function deleteRecordById(id) {
+  if (WORKER_URL) {
+    try {
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id: Number(id) || String(id) }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        return result.error || `删除失败(${response.status})`;
+      }
+    } catch (error) {
+      return '删除失败，请检查网络或 Worker 配置';
+    }
+  }
+  return null;
+}
+
 function formatPercent(value) {
   if (!Number.isFinite(value)) return '0.00%';
   return `${(value * 100).toFixed(2)}%`;
@@ -918,16 +942,30 @@ function renderTable() {
     .map((record) => {
       const accuracy = getAccuracy(record);
       const avgSeconds = getAverageSeconds(record);
+      const personColor = PERSON_COLORS[record.person] || '#4e9cf5';
+      const moduleColor = MODULE_COLORS[record.module] || '#4e9cf5';
+      const accClass = accuracy >= 0.8 ? 'acc-good' : accuracy >= 0.6 ? 'acc-mid' : 'acc-low';
       return `
         <tr>
-          <td>${record.date}</td>
-          <td>${record.person}</td>
-          <td>${MODULE_LABELS[record.module] || record.module}</td>
-          <td>${record.questionCount}</td>
-          <td>${record.correctCount}</td>
-          <td>${formatPercent(accuracy)}</td>
+          <td><span class="table-date">${record.date}</span></td>
+          <td><span class="person-chip" style="--c:${personColor}">${record.person}</span></td>
+          <td><span class="module-chip" style="--c:${moduleColor}">${MODULE_LABELS[record.module] || record.module}</span></td>
+          <td class="num">${record.questionCount}</td>
+          <td class="num">${record.correctCount}</td>
+          <td><span class="acc-chip ${accClass}">${formatPercent(accuracy)}</span></td>
           <td>${formatMinutes(record.durationMinutes)}</td>
           <td>${avgSeconds.toFixed(0)} 秒</td>
+          <td class="col-actions">
+            <button type="button" class="row-delete-btn" data-id="${record.id}" title="删除该记录" aria-label="删除">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </button>
+          </td>
         </tr>
       `;
     })
@@ -1050,6 +1088,24 @@ function bindEvents() {
     if (!button || button.disabled) return;
     state.tablePage = Number(button.dataset.page);
     renderTable();
+  });
+
+  document.getElementById('recordTableBody').addEventListener('click', async (e) => {
+    const button = e.target.closest('.row-delete-btn');
+    if (!button) return;
+    const id = button.dataset.id;
+    if (!window.confirm('确定删除这条记录吗？删除后无法恢复。')) return;
+
+    button.disabled = true;
+    const error = await deleteRecordById(id);
+    if (error) {
+      window.alert(error);
+      button.disabled = false;
+      return;
+    }
+    removeLocalRecordById(String(id));
+    state.records = state.records.filter((record) => String(record.id) !== String(id));
+    renderAll();
   });
 
   document.getElementById('overviewDate').addEventListener('change', (e) => {

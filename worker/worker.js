@@ -83,16 +83,11 @@ export default {
       return jsonResponse({ ok: false, error: `缺少环境变量: ${missingVars.join(', ')}` }, 500);
     }
 
-    let record;
+    let payload;
     try {
-      record = await request.json();
+      payload = await request.json();
     } catch (error) {
       return jsonResponse({ ok: false, error: '请求体不是有效的 JSON' }, 400);
-    }
-
-    const validationError = validateRecord(record);
-    if (validationError) {
-      return jsonResponse({ ok: false, error: validationError }, 400);
     }
 
     const authHeaders = {
@@ -102,17 +97,15 @@ export default {
       'User-Agent': 'GetAshore-Worker',
     };
 
+    // 读取当前 records.json，拿到内容与 sha
+    let records = [];
+    let sha = null;
     try {
-      // 1. 读取当前文件，拿到 sha 和内容
       const getResponse = await fetch(FILE_URL(GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH), {
         headers: authHeaders,
       });
 
-      let records = [];
-      let sha = null;
-
       if (getResponse.status === 404) {
-        // 文件尚不存在，从空数组开始
         records = [];
       } else if (!getResponse.ok) {
         const bodyText = await getResponse.text();
@@ -129,21 +122,47 @@ export default {
           return jsonResponse({ ok: false, error: 'records.json 内容解析失败' }, 502);
         }
       }
+    } catch (error) {
+      return jsonResponse({ ok: false, error: '读取 records.json 失败', detail: String(error) }, 500);
+    }
 
+    let nextRecords;
+    let commitMessage;
+    let deletedRecord = null;
+
+    if (payload && payload.action === 'delete') {
+      const id = payload.id;
+      if (id === undefined || id === null || id === '') {
+        return jsonResponse({ ok: false, error: '缺少记录 ID' }, 400);
+      }
+      const targetIndex = records.findIndex((r) => String(r.id) === String(id));
+      if (targetIndex === -1) {
+        return jsonResponse({ ok: false, error: '未找到该记录' }, 404);
+      }
+      nextRecords = records.slice();
+      deletedRecord = nextRecords.splice(targetIndex, 1)[0];
+      commitMessage = `chore: remove study record ${String(id)}`;
+    } else {
+      const validationError = validateRecord(payload);
+      if (validationError) {
+        return jsonResponse({ ok: false, error: validationError }, 400);
+      }
       const newRecord = {
         id: Date.now(),
-        date: record.date,
-        person: record.person,
-        module: record.module,
-        questionCount: Number(record.questionCount),
-        correctCount: Number(record.correctCount),
-        durationMinutes: Number(record.durationMinutes),
-        note: record.note || '',
+        date: payload.date,
+        person: payload.person,
+        module: payload.module,
+        questionCount: Number(payload.questionCount),
+        correctCount: Number(payload.correctCount),
+        durationMinutes: Number(payload.durationMinutes),
+        note: payload.note || '',
       };
+      nextRecords = records.concat(newRecord);
+      commitMessage = `feat: add study record ${newRecord.date} ${newRecord.person}`;
+    }
 
-      records.push(newRecord);
-
-      // 2. 写回文件
+    // 写回文件
+    try {
       const putResponse = await fetch(FILE_URL(GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH), {
         method: 'PUT',
         headers: {
@@ -151,8 +170,8 @@ export default {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: `feat: add study record ${newRecord.date} ${newRecord.person}`,
-          content: base64Encode(JSON.stringify(records, null, 2)),
+          message: commitMessage,
+          content: base64Encode(JSON.stringify(nextRecords, null, 2)),
           sha,
         }),
       });
@@ -162,7 +181,11 @@ export default {
         return jsonResponse({ ok: false, error: `写入记录失败: ${putResponse.status}`, detail }, 502);
       }
 
-      return jsonResponse({ ok: true, record: newRecord, total: records.length });
+      return jsonResponse({
+        ok: true,
+        total: nextRecords.length,
+        ...(deletedRecord ? { deleted: { id: deletedRecord.id } } : {}),
+      });
     } catch (error) {
       return jsonResponse({ ok: false, error: 'Worker 内部错误', detail: String(error) }, 500);
     }
