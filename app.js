@@ -893,9 +893,24 @@ function renderModuleCharts() {
   }
 
   const palette = MODULE_CHART_COLORS[module.id] || ['#4e9cf5', '#7cb9f8', '#c0ddff'];
-  const labels = submissions.map((record) => record.date);
+
+  // 同一天多次提交时，给日期标签加“·次数”后缀避免混淆
+  const dayCount = {};
+  submissions.forEach((record) => {
+    dayCount[record.date] = (dayCount[record.date] || 0) + 1;
+  });
+  const seen = {};
+  const labels = submissions.map((record) => {
+    const n = (seen[record.date] = (seen[record.date] || 0) + 1);
+    return dayCount[record.date] > 1 ? `${record.date}·${n}` : record.date;
+  });
   const accuracyValues = submissions.map((record) => getAccuracy(record));
   const durationValues = submissions.map((record) => getAverageSeconds(record));
+
+  // 提交次数很多时缩小数据点、减细线条，避免糊成一团
+  const dense = submissions.length > 60;
+  const pointRadius = dense ? 2 : submissions.length > 24 ? 2.5 : 3;
+  const lineWidth = dense ? 1.5 : 2;
 
   // 答题总数图保持“按天累计”口径：每天累计该模块的提交数量
   const moduleRecords = state.records.filter(
@@ -911,7 +926,17 @@ function renderModuleCharts() {
   destroyModuleCharts();
 
   const axisStyle = {
-    x: { ticks: { color: CHART_TEXT_COLOR }, grid: { display: false } },
+    x: {
+      ticks: {
+        color: CHART_TEXT_COLOR,
+        maxRotation: 45,
+        minRotation: 0,
+        autoSkip: true,
+        autoSkipPadding: 12,
+        maxTicksLimit: 16,
+      },
+      grid: { display: false },
+    },
     y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
   };
 
@@ -932,7 +957,8 @@ function renderModuleCharts() {
         backgroundColor: `${palette[0]}22`,
         fill: true,
         tension: 0.35,
-        pointRadius: 3,
+        borderWidth: lineWidth,
+        pointRadius,
         pointBackgroundColor: palette[0],
       }],
     },
@@ -962,7 +988,8 @@ function renderModuleCharts() {
         backgroundColor: `${palette[1]}22`,
         fill: true,
         tension: 0.35,
-        pointRadius: 3,
+        borderWidth: lineWidth,
+        pointRadius,
         pointBackgroundColor: palette[1],
       }],
     },
@@ -1004,7 +1031,8 @@ function renderModuleCharts() {
         backgroundColor: `${palette[2]}22`,
         fill: true,
         tension: 0.35,
-        pointRadius: 3,
+        borderWidth: lineWidth,
+        pointRadius,
         pointBackgroundColor: palette[2],
       }],
     },
