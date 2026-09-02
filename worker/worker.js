@@ -15,7 +15,7 @@ const FILE_URL = (owner, repo, branch) =>
   `https://api.github.com/repos/${owner}/${repo}/contents/${RECORD_FILE}?ref=${branch}`;
 
 const ALLOWED_MODULES = new Set(['politics', 'quantity', 'language', 'logic', 'data']);
-const ALLOWED_PERSONS = new Set(['A', 'B']);
+const ALLOWED_PERSONS = new Set(['升', '强']);
 
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {

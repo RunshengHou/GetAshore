@@ -7,13 +7,13 @@ const MODULE_LABELS = {
 };
 
 const PERSON_COLORS = {
-  A: '#668bd3',
-  B: '#8276c8',
+  升: '#668bd3',
+  强: '#8276c8',
 };
 
 const PERSON_CHART_COLORS = {
-  A: ['#668bd3', '#8795e5', '#b7d9ef'],
-  B: ['#8276c8', '#a095dc', '#c2bbed'],
+  升: ['#668bd3', '#8795e5', '#b7d9ef'],
+  强: ['#8276c8', '#a095dc', '#c2bbed'],
 };
 
 const MODULE_COLORS = {
@@ -37,7 +37,7 @@ const state = {
   selectedModule: 'all',
   charts: {},
   activeView: 'overview',
-  profilePerson: 'A',
+  profilePerson: '升',
   profileModule: '',
   tablePage: 1,
   tablePageSize: 20,
@@ -139,13 +139,13 @@ function renderSummary() {
         label: `${user.name} 今日刷题量`,
         value: totalQuestions,
         sub: `${today} 记录`,
-        tone: user.name === 'A' ? 'primary' : 'green',
+        tone: user.name === '升' ? 'primary' : 'green',
       },
       {
         label: `${user.name} 今日正确率`,
         value: formatPercent(accuracy),
         sub: `${totalCorrect}/${totalQuestions} 题`,
-        tone: user.name === 'A' ? 'orange' : 'purple',
+        tone: user.name === '升' ? 'orange' : 'purple',
       },
     ];
   });
@@ -301,7 +301,7 @@ function renderHeatmap() {
       current.setDate(current.getDate() + 1);
     }
 
-    const showMonthLabels = user.name !== 'B';
+    const showMonthLabels = user.name !== '强';
 
     const heatmapMarkup = `
       <div class="heatmap-user-row">
