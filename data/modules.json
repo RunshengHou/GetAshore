@@ -1,0 +1,7 @@
+[
+  { "id": "politics", "name": "政治常识" },
+  { "id": "quantity", "name": "数量关系" },
+  { "id": "language", "name": "言语理解" },
+  { "id": "logic", "name": "判断推理" },
+  { "id": "data", "name": "资料分析" }
+]
