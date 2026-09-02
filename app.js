@@ -141,24 +141,21 @@ function renderHeatmap() {
       .map((r) => [r.date, Number(r.questionCount || 0)])
       .sort((a, b) => a[0].localeCompare(b[0]));
 
-    // 获取日期范围
-    if (data.length === 0) {
-      data = [];
-    }
+    // 计算最近84天的范围（12周）
+    const today = new Date();
+    const maxDate = new Date(today);
+    const minDate = new Date(today);
+    minDate.setDate(minDate.getDate() - 83); // 83天前，加上今天共84天
 
-    // 计算最早和最晚日期，确保填充
-    let minDate = data.length ? data[0][0] : new Date().toISOString().slice(0, 10);
-    let maxDate = data.length ? data[data.length - 1][0] : new Date().toISOString().slice(0, 10);
+    const minDateStr = minDate.toISOString().slice(0, 10);
+    const maxDateStr = maxDate.toISOString().slice(0, 10);
 
     // 创建一个日期集合方便查找
     const dataMap = new Map(data);
 
     // 填充所有日期（包括没有数据的日期，显示为 0）
-    const minDateObj = new Date(minDate);
-    const maxDateObj = new Date(maxDate);
     const allDates = [];
-
-    for (let d = new Date(minDateObj); d <= maxDateObj; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate() + 1)) {
       const dateStr = d.toISOString().slice(0, 10);
       const count = dataMap.has(dateStr) ? dataMap.get(dateStr) : 0;
       allDates.push([dateStr, count]);
@@ -191,7 +188,7 @@ function renderHeatmap() {
         },
       },
       calendar: {
-        range: [minDate, maxDate],
+        range: [minDateStr, maxDateStr],
         cellSize: [13, 13],
         left: 50,
         top: 50,
