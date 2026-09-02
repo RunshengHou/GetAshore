@@ -1,20 +1,20 @@
 :root {
-  --bg: #eef2f5;
+  --bg: #eef2f6;
   --bg-soft: #f7f9fa;
-  --panel: rgba(255, 255, 255, 0.94);
+  --panel: rgba(255, 255, 255, 0.96);
   --panel-soft: #f5f7fa;
   --line: rgba(74, 91, 116, 0.16);
   --text: #293548;
-  --muted: #6d788a;
-  --primary: #668bd3;
-  --primary-strong: #4668ab;
-  --secondary: #9bbce8;
-  --accent: #efb76f;
-  --teal: #6a9cc1;
-  --teal-soft: rgba(106, 156, 193, 0.12);
+  --muted: #66758c;
+  --primary: #5470e6;
+  --primary-strong: #3b58c7;
+  --secondary: #7aa2ff;
+  --accent: #f2b25f;
+  --teal: #58b8ad;
+  --teal-soft: rgba(88, 184, 173, 0.12);
   --navy: #25354d;
   --navy-2: #364d6b;
-  --slate: #5d6d82;
+  --slate: #5b6b80;
   --shadow: 0 18px 36px rgba(42, 57, 79, 0.1);
   --shadow-soft: 0 10px 22px rgba(65, 81, 106, 0.09);
 }
@@ -229,6 +229,46 @@ select {
   }
 }
 
+.overview-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.overview-date-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+}
+
+.overview-date-field label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.overview-date-field input[type="date"] {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font: inherit;
+  color: var(--text);
+  background: #fff;
+}
+
+.date-today-btn {
+  padding: 7px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -256,23 +296,23 @@ select {
   inset: 0 auto auto 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(90deg, #668bd3 0%, #8795e5 36%, #b7d9ef 68%, #edb0a4 100%);
+  background: linear-gradient(90deg, #5470e6 0%, #7aa2ff 45%, #9a6df0 100%);
 }
 
 .summary-card.primary {
-  background: linear-gradient(135deg, rgba(102, 139, 211, 0.14), rgba(183, 217, 239, 0.1));
+  background: linear-gradient(135deg, rgba(84, 112, 230, 0.13), rgba(122, 162, 255, 0.07));
 }
 
 .summary-card.green {
-  background: linear-gradient(135deg, rgba(184, 214, 157, 0.17), rgba(159, 184, 229, 0.06));
+  background: linear-gradient(135deg, rgba(151, 201, 109, 0.15), rgba(88, 184, 173, 0.06));
 }
 
 .summary-card.orange {
-  background: linear-gradient(135deg, rgba(237, 176, 164, 0.17), rgba(244, 201, 141, 0.08));
+  background: linear-gradient(135deg, rgba(235, 150, 131, 0.15), rgba(242, 178, 95, 0.07));
 }
 
 .summary-card.purple {
-  background: linear-gradient(135deg, rgba(183, 217, 239, 0.17), rgba(244, 201, 141, 0.07));
+  background: linear-gradient(135deg, rgba(154, 109, 240, 0.14), rgba(122, 162, 255, 0.07));
 }
 
 .summary-card .label {
@@ -294,9 +334,9 @@ select {
   box-shadow: 0 0 16px rgba(70, 104, 171, 0.22);
 }
 
-.summary-card.green .dot { background: linear-gradient(135deg, #b8d69d, #b7d9ef); }
-.summary-card.orange .dot { background: linear-gradient(135deg, #edb0a4, #f4c98d); }
-.summary-card.purple .dot { background: linear-gradient(135deg, #9fb8e5, #8795e5); }
+.summary-card.green .dot { background: linear-gradient(135deg, #97c96d, #64b0ea); }
+.summary-card.orange .dot { background: linear-gradient(135deg, #eb9683, #f2b25f); }
+.summary-card.purple .dot { background: linear-gradient(135deg, #9a6df0, #b68cf6); }
 
 .summary-card .value {
   font-size: clamp(28px, 3vw, 40px);
@@ -533,8 +573,8 @@ select {
 .profile-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(102, 139, 211, 0.15), rgba(135, 149, 229, 0.1) 55%, rgba(183, 217, 239, 0.12));
-  border: 1px solid rgba(102, 139, 211, 0.18);
+  background: linear-gradient(135deg, rgba(84, 112, 230, 0.15), rgba(122, 162, 255, 0.1) 55%, rgba(188, 208, 255, 0.12));
+  border: 1px solid rgba(84, 112, 230, 0.18);
   border-radius: 14px;
   padding: 16px;
 }
@@ -545,59 +585,59 @@ select {
   inset: 0 auto auto 0;
   width: 100%;
   height: 4px;
-  background: linear-gradient(90deg, #668bd3, #8795e5, #b7d9ef);
+  background: linear-gradient(90deg, #5470e6, #7aa2ff, #bcd0ff);
 }
 
 .profile-card:nth-child(1) {
-  background: linear-gradient(135deg, rgba(102, 139, 211, 0.18), rgba(135, 149, 229, 0.08));
+  background: linear-gradient(135deg, rgba(84, 112, 230, 0.18), rgba(122, 162, 255, 0.08));
 }
 
 .profile-card:nth-child(2) {
-  background: linear-gradient(135deg, rgba(119, 130, 210, 0.16), rgba(159, 184, 229, 0.1));
+  background: linear-gradient(135deg, rgba(95, 124, 216, 0.16), rgba(188, 208, 255, 0.1));
 }
 
 .profile-card:nth-child(3) {
-  background: linear-gradient(135deg, rgba(135, 149, 229, 0.15), rgba(183, 217, 239, 0.12));
+  background: linear-gradient(135deg, rgba(122, 162, 255, 0.15), rgba(188, 208, 255, 0.12));
 }
 
 .profile-card:nth-child(4) {
-  background: linear-gradient(135deg, rgba(94, 119, 184, 0.16), rgba(159, 184, 229, 0.1));
+  background: linear-gradient(135deg, rgba(70, 99, 200, 0.16), rgba(122, 162, 255, 0.1));
 }
 
-.profile-card:nth-child(1)::before { background: linear-gradient(90deg, #668bd3, #8795e5); }
-.profile-card:nth-child(2)::before { background: linear-gradient(90deg, #7782d2, #9fb8e5); }
-.profile-card:nth-child(3)::before { background: linear-gradient(90deg, #8795e5, #b7d9ef); }
-.profile-card:nth-child(4)::before { background: linear-gradient(90deg, #5e77b8, #9fb8e5); }
+.profile-card:nth-child(1)::before { background: linear-gradient(90deg, #5470e6, #7aa2ff); }
+.profile-card:nth-child(2)::before { background: linear-gradient(90deg, #5f7cd8, #bcd0ff); }
+.profile-card:nth-child(3)::before { background: linear-gradient(90deg, #7aa2ff, #bcd0ff); }
+.profile-card:nth-child(4)::before { background: linear-gradient(90deg, #4663c8, #7aa2ff); }
 
-.profile-card--B {
-  background: linear-gradient(135deg, rgba(130, 118, 200, 0.16), rgba(160, 149, 220, 0.1) 55%, rgba(194, 187, 237, 0.12));
-  border-color: rgba(130, 118, 200, 0.2);
+.profile-card--强 {
+  background: linear-gradient(135deg, rgba(154, 109, 240, 0.16), rgba(182, 140, 246, 0.1) 55%, rgba(220, 196, 255, 0.12));
+  border-color: rgba(154, 109, 240, 0.2);
 }
 
-.profile-card--B::before {
-  background: linear-gradient(90deg, #8276c8, #a095dc, #c2bbed);
+.profile-card--强::before {
+  background: linear-gradient(90deg, #9a6df0, #b68cf6, #dcc4ff);
 }
 
-.profile-card--B:nth-child(1) {
-  background: linear-gradient(135deg, rgba(130, 118, 200, 0.18), rgba(160, 149, 220, 0.08));
+.profile-card--强:nth-child(1) {
+  background: linear-gradient(135deg, rgba(154, 109, 240, 0.18), rgba(182, 140, 246, 0.08));
 }
 
-.profile-card--B:nth-child(2) {
-  background: linear-gradient(135deg, rgba(145, 132, 211, 0.16), rgba(194, 187, 237, 0.1));
+.profile-card--强:nth-child(2) {
+  background: linear-gradient(135deg, rgba(163, 120, 235, 0.16), rgba(220, 196, 255, 0.1));
 }
 
-.profile-card--B:nth-child(3) {
-  background: linear-gradient(135deg, rgba(160, 149, 220, 0.16), rgba(194, 187, 237, 0.1));
+.profile-card--强:nth-child(3) {
+  background: linear-gradient(135deg, rgba(182, 140, 246, 0.16), rgba(220, 196, 255, 0.12));
 }
 
-.profile-card--B:nth-child(4) {
-  background: linear-gradient(135deg, rgba(112, 101, 180, 0.16), rgba(160, 149, 220, 0.1));
+.profile-card--强:nth-child(4) {
+  background: linear-gradient(135deg, rgba(135, 92, 220, 0.16), rgba(182, 140, 246, 0.1));
 }
 
-.profile-card--B:nth-child(1)::before { background: linear-gradient(90deg, #8276c8, #a095dc); }
-.profile-card--B:nth-child(2)::before { background: linear-gradient(90deg, #9184d3, #c2bbed); }
-.profile-card--B:nth-child(3)::before { background: linear-gradient(90deg, #a095dc, #c2bbed); }
-.profile-card--B:nth-child(4)::before { background: linear-gradient(90deg, #7065b4, #a095dc); }
+.profile-card--强:nth-child(1)::before { background: linear-gradient(90deg, #9a6df0, #b68cf6); }
+.profile-card--强:nth-child(2)::before { background: linear-gradient(90deg, #a378eb, #dcc4ff); }
+.profile-card--强:nth-child(3)::before { background: linear-gradient(90deg, #b68cf6, #dcc4ff); }
+.profile-card--强:nth-child(4)::before { background: linear-gradient(90deg, #875cdc, #b68cf6); }
 
 .profile-card .person {
   font-size: 12px;
@@ -1006,6 +1046,18 @@ tbody tr:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
+  }
+
+  .overview-toolbar {
+    justify-content: flex-start;
+  }
+
+  .overview-date-field {
+    width: 100%;
+  }
+
+  .overview-date-field input[type="date"] {
+    flex: 1;
   }
 
   .content-area {

@@ -7,25 +7,25 @@ const MODULE_LABELS = {
 };
 
 const PERSON_COLORS = {
-  升: '#668bd3',
-  强: '#8276c8',
+  升: '#5470e6',
+  强: '#9a6df0',
 };
 
 const PERSON_CHART_COLORS = {
-  升: ['#668bd3', '#8795e5', '#b7d9ef'],
-  强: ['#8276c8', '#a095dc', '#c2bbed'],
+  升: ['#5470e6', '#7aa2ff', '#bcd0ff'],
+  强: ['#9a6df0', '#b68cf6', '#dcc4ff'],
 };
 
 const MODULE_COLORS = {
-  politics: '#9fb8e5',
-  quantity: '#f4c98d',
-  language: '#b7d9ef',
-  logic: '#edb0a4',
-  data: '#b8d69d',
+  politics: '#58b8ad',
+  quantity: '#f2b25f',
+  language: '#64b0ea',
+  logic: '#eb9683',
+  data: '#97c96d',
 };
 
-const CHART_TEXT_COLOR = '#537276';
-const CHART_GRID_COLOR = 'rgba(83, 114, 118, 0.14)';
+const CHART_TEXT_COLOR = '#5b6b80';
+const CHART_GRID_COLOR = 'rgba(91, 107, 128, 0.14)';
 const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
 const WORKER_URL = 'https://getashore.hourunsheng.workers.dev';
 
@@ -37,6 +37,7 @@ const state = {
   selectedModule: 'all',
   charts: {},
   activeView: 'overview',
+  viewDate: '',
   profilePerson: '升',
   profileModule: '',
   tablePage: 1,
@@ -124,8 +125,31 @@ function getTodayDate() {
   return formatLocalDate(new Date());
 }
 
-function renderSummary() {
+function getActiveDate() {
+  return state.viewDate || getTodayDate();
+}
+
+function initOverviewDateControl() {
+  const input = document.getElementById('overviewDate');
   const today = getTodayDate();
+  input.max = today;
+  input.value = state.viewDate || today;
+}
+
+function applyOverviewDate(value) {
+  state.viewDate = value || '';
+  const input = document.getElementById('overviewDate');
+  if (input) {
+    input.value = state.viewDate || getTodayDate();
+  }
+  renderSummary();
+  renderDailyPieCharts();
+  renderRadarChart();
+  renderBarChart();
+}
+
+function renderSummary() {
+  const today = getActiveDate();
   const container = document.getElementById('summaryGrid');
 
   const cards = state.users.flatMap((user) => {
@@ -136,13 +160,13 @@ function renderSummary() {
 
     return [
       {
-        label: `${user.name} 今日刷题量`,
+        label: `${user.name} 当日刷题量`,
         value: totalQuestions,
         sub: `${today} 记录`,
         tone: user.name === '升' ? 'primary' : 'green',
       },
       {
-        label: `${user.name} 今日正确率`,
+        label: `${user.name} 当日正确率`,
         value: formatPercent(accuracy),
         sub: `${totalCorrect}/${totalQuestions} 题`,
         tone: user.name === '升' ? 'orange' : 'purple',
@@ -168,7 +192,7 @@ function renderSummary() {
 
 function renderDailyPieCharts() {
   const container = document.getElementById('dailyPieCharts');
-  const today = getTodayDate();
+  const today = getActiveDate();
 
   Object.values(state.charts)
     .filter((chart) => chart && chart.canvas && chart.canvas.id.startsWith('dailyPieChart-'))
@@ -179,7 +203,7 @@ function renderDailyPieCharts() {
       (user) => `
         <article class="panel daily-pie-item">
           <div class="panel-header">
-            <h2>${user.name} 今日刷题构成</h2>
+            <h2>${user.name} 当日刷题构成</h2>
           </div>
           <div class="daily-pie-title">${user.name}<span>${today}</span></div>
           <div class="daily-pie-wrap">
@@ -207,7 +231,8 @@ function renderDailyPieCharts() {
             data: moduleTotals,
             backgroundColor: state.modules.map((module) => MODULE_COLORS[module.id]),
             borderColor: '#ffffff',
-            borderWidth: 3,
+            borderWidth: 2,
+            hoverOffset: 6,
           }],
         },
         options: {
@@ -377,7 +402,7 @@ function renderHeatmap() {
 }
 
 function renderRadarChart() {
-  const today = getTodayDate();
+  const today = getActiveDate();
   const modules = state.modules.map((module) => module.id);
   const labels = modules.map((id) => MODULE_LABELS[id]);
   const datasets = state.users.map((user) => {
@@ -397,7 +422,9 @@ function renderRadarChart() {
       backgroundColor: `${PERSON_COLORS[user.name]}33`,
       pointBackgroundColor: PERSON_COLORS[user.name],
       pointBorderColor: '#fff',
-      pointHoverRadius: 5,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      borderWidth: 2,
     };
   });
 
@@ -451,7 +478,9 @@ function renderLineChart() {
     backgroundColor: `${PERSON_COLORS[user.name]}22`,
     tension: 0.35,
     fill: false,
+    borderWidth: 2,
     pointRadius: 3,
+    pointHoverRadius: 6,
   }));
 
   const ctx = document.getElementById('lineChart');
@@ -491,7 +520,7 @@ function renderLineChart() {
 }
 
 function renderBarChart() {
-  const today = getTodayDate();
+  const today = getActiveDate();
   const labels = state.users.map((user) => user.name);
   const ctx = document.getElementById('barChart');
 
@@ -503,9 +532,9 @@ function renderBarChart() {
         .reduce((sum, item) => sum + Number(item.questionCount || 0), 0)
     ),
     backgroundColor: MODULE_COLORS[module.id],
-    borderColor: MODULE_COLORS[module.id],
-    borderWidth: 0,
-    borderRadius: 0,
+    borderColor: '#ffffff',
+    borderWidth: 1,
+    borderRadius: 2,
     borderSkipped: false,
     stack: 'questions',
     barPercentage: 0.76,
@@ -944,6 +973,7 @@ function populateFilters() {
   }
 
   document.getElementById('recordDate').valueAsDate = new Date();
+  initOverviewDateControl();
 }
 
 function setActiveView(viewName) {
@@ -993,6 +1023,14 @@ function bindEvents() {
     if (!button || button.disabled) return;
     state.tablePage = Number(button.dataset.page);
     renderTable();
+  });
+
+  document.getElementById('overviewDate').addEventListener('change', (e) => {
+    applyOverviewDate(e.target.value);
+  });
+
+  document.getElementById('overviewTodayBtn').addEventListener('click', () => {
+    applyOverviewDate('');
   });
 
   document.getElementById('profilePersonSwitcher').addEventListener('click', (e) => {
