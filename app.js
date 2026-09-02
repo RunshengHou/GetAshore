@@ -7,17 +7,26 @@ const MODULE_LABELS = {
 };
 
 const PERSON_COLORS = {
-  A: '#4676f6',
-  B: '#8b5cf6',
+  A: '#668bd3',
+  B: '#8276c8',
+};
+
+const PERSON_CHART_COLORS = {
+  A: ['#668bd3', '#8795e5', '#b7d9ef'],
+  B: ['#8276c8', '#a095dc', '#c2bbed'],
 };
 
 const MODULE_COLORS = {
-  politics: '#4aa3a2',
-  quantity: '#6bbd99',
-  language: '#8ecae6',
-  logic: '#a3c9a8',
-  data: '#5b8def',
+  politics: '#9fb8e5',
+  quantity: '#f4c98d',
+  language: '#b7d9ef',
+  logic: '#edb0a4',
+  data: '#b8d69d',
 };
+
+const CHART_TEXT_COLOR = '#537276';
+const CHART_GRID_COLOR = 'rgba(83, 114, 118, 0.14)';
+const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
 
 const state = {
   users: [],
@@ -27,6 +36,10 @@ const state = {
   selectedModule: 'all',
   charts: {},
   activeView: 'overview',
+  profilePerson: 'A',
+  profileModule: '',
+  tablePage: 1,
+  tablePageSize: 20,
 };
 
 const pageTitles = {
@@ -44,6 +57,27 @@ async function loadJson(path) {
     throw new Error(`加载失败: ${path}`);
   }
   return res.json();
+}
+
+function getLocalRecords() {
+  try {
+    const records = JSON.parse(localStorage.getItem(LOCAL_RECORDS_KEY) || '[]');
+    return Array.isArray(records) ? records : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveLocalRecord(record) {
+  const records = getLocalRecords();
+  records.push(record);
+  localStorage.setItem(LOCAL_RECORDS_KEY, JSON.stringify(records));
+}
+
+function mergeRecords(staticRecords) {
+  const localRecords = getLocalRecords();
+  const staticIds = new Set(staticRecords.map((record) => String(record.id)));
+  return staticRecords.concat(localRecords.filter((record) => !staticIds.has(String(record.id))));
 }
 
 function formatPercent(value) {
@@ -180,7 +214,10 @@ function renderDailyPieCharts() {
           maintainAspectRatio: false,
           cutout: '58%',
           plugins: {
-            legend: { position: 'bottom' },
+            legend: {
+              position: 'bottom',
+              labels: { color: CHART_TEXT_COLOR, usePointStyle: true },
+            },
             tooltip: {
               callbacks: {
                 label: (context) => `${context.label}: ${context.raw} 题`,
@@ -381,14 +418,20 @@ function renderRadarChart() {
         r: {
           min: 0,
           max: 1,
+          angleLines: { color: CHART_GRID_COLOR },
+          grid: { color: CHART_GRID_COLOR },
           ticks: {
+            color: CHART_TEXT_COLOR,
             stepSize: 0.2,
             callback: (value) => `${value * 100}%`,
           },
         },
       },
       plugins: {
-        legend: { position: 'bottom' },
+        legend: {
+          position: 'bottom',
+          labels: { color: CHART_TEXT_COLOR, usePointStyle: true },
+        },
       },
     },
   });
@@ -424,9 +467,23 @@ function renderLineChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: CHART_TEXT_COLOR, usePointStyle: true },
+        },
+      },
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: '题目数量' } },
+        x: {
+          ticks: { color: CHART_TEXT_COLOR },
+          grid: { color: CHART_GRID_COLOR },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: CHART_TEXT_COLOR },
+          grid: { color: CHART_GRID_COLOR },
+          title: { display: true, text: '题目数量', color: CHART_TEXT_COLOR },
+        },
       },
     },
   });
@@ -479,7 +536,7 @@ function renderBarChart() {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#475569',
+            color: CHART_TEXT_COLOR,
             usePointStyle: true,
             pointStyle: 'circle',
             boxWidth: 10,
@@ -491,9 +548,9 @@ function renderBarChart() {
           },
         },
         tooltip: {
-          backgroundColor: '#0f172a',
-          titleColor: '#f8fafc',
-          bodyColor: '#e2e8f0',
+          backgroundColor: '#285d61',
+          titleColor: '#ffffff',
+          bodyColor: '#effffc',
           borderWidth: 0,
           padding: 10,
           displayColors: true,
@@ -507,7 +564,7 @@ function renderBarChart() {
             drawBorder: false,
           },
           ticks: {
-            color: '#475569',
+            color: CHART_TEXT_COLOR,
             font: {
               weight: '600',
             },
@@ -517,17 +574,17 @@ function renderBarChart() {
           stacked: true,
           beginAtZero: true,
           grid: {
-            color: 'rgba(148, 163, 184, 0.18)',
+            color: CHART_GRID_COLOR,
             drawBorder: false,
           },
           ticks: {
-            color: '#475569',
+            color: CHART_TEXT_COLOR,
             stepSize: 10,
           },
           title: {
             display: true,
             text: '题目数量',
-            color: '#334155',
+            color: CHART_TEXT_COLOR,
             font: {
               weight: '700',
             },
@@ -540,43 +597,70 @@ function renderBarChart() {
 
 function renderProfileOverview() {
   const container = document.getElementById('profileOverview');
+  const user = state.users.find((item) => item.name === state.profilePerson) || state.users[0];
 
-  container.innerHTML = state.users
-    .map((user) => {
-      const records = state.records.filter((r) => r.person === user.name);
-      const totalQ = records.reduce((sum, r) => sum + Number(r.questionCount || 0), 0);
-      const totalC = records.reduce((sum, r) => sum + Number(r.correctCount || 0), 0);
-      const avgAccuracy = totalQ ? totalC / totalQ : 0;
-      const dates = new Set(records.map((r) => r.date));
-      const durationSum = records.reduce((sum, r) => sum + Number(r.durationMinutes || 0), 0);
-      const avgMinutes = records.length ? durationSum / records.length : 0;
+  if (!user) {
+    container.innerHTML = '';
+    return;
+  }
 
-      return `
-        <div class="profile-card">
-          <div class="person">${user.name}</div>
-          <p class="value">${totalQ}</p>
-          <div class="detail">正确率 ${formatPercent(avgAccuracy)} · 平均 ${avgMinutes.toFixed(1)} 分</div>
-          <div class="detail">活跃天数 ${dates.size}</div>
-        </div>
-      `;
-    })
-    .join('');
+  const records = state.records.filter((r) => r.person === user.name);
+  const totalQ = records.reduce((sum, r) => sum + Number(r.questionCount || 0), 0);
+  const totalC = records.reduce((sum, r) => sum + Number(r.correctCount || 0), 0);
+  const avgAccuracy = totalQ ? totalC / totalQ : 0;
+  const dates = new Set(records.map((r) => r.date));
+  const durationSum = records.reduce((sum, r) => sum + Number(r.durationMinutes || 0), 0);
+  const avgMinutes = records.length ? durationSum / records.length : 0;
+
+  container.innerHTML = `
+    <div class="profile-card profile-card--${user.name}">
+      <div class="person">累计刷题总数</div>
+      <p class="value">${totalQ}</p>
+      <div class="detail">${dates.size} 个活跃日</div>
+    </div>
+    <div class="profile-card profile-card--${user.name}">
+      <div class="person">累计答对数量</div>
+      <p class="value">${totalC}</p>
+      <div class="detail">综合正确率 ${formatPercent(avgAccuracy)}</div>
+    </div>
+    <div class="profile-card profile-card--${user.name}">
+      <div class="person">平均正确率</div>
+      <p class="value">${formatPercent(avgAccuracy)}</p>
+      <div class="detail">基于 ${totalQ} 道题</div>
+    </div>
+    <div class="profile-card profile-card--${user.name}">
+      <div class="person">平均用时</div>
+      <p class="value">${avgMinutes.toFixed(1)}<small> 分</small></p>
+      <div class="detail">共 ${records.length} 条记录</div>
+    </div>
+  `;
+
+  document.querySelectorAll('.profile-person-button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.person === user.name);
+  });
 }
 
 function renderModuleGrid() {
   const container = document.getElementById('moduleGrid');
+  const user = state.users.find((item) => item.name === state.profilePerson) || state.users[0];
+  const module = state.modules.find((item) => item.id === state.profileModule) || state.modules[0];
 
-  container.innerHTML = state.users
-    .map((user) => {
-      const userCards = state.modules
+  if (!user || !module) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const userCard = [module]
         .map((module) => {
           const records = state.records.filter((r) => r.person === user.name && r.module === module.id);
           const totalQ = records.reduce((sum, r) => sum + Number(r.questionCount || 0), 0);
           const totalC = records.reduce((sum, r) => sum + Number(r.correctCount || 0), 0);
           const avgAccuracy = totalQ ? totalC / totalQ : 0;
-          const avgSeconds = records.length
-            ? records.reduce((sum, r) => sum + getAverageSeconds(r), 0) / records.length
-            : 0;
+          const totalDurationSeconds = records.reduce(
+            (sum, record) => sum + Number(record.durationMinutes || 0) * 60,
+            0
+          );
+          const avgSeconds = totalQ ? totalDurationSeconds / totalQ : 0;
 
           const trendData = getDateList(state.records)
             .slice(-7)
@@ -598,52 +682,187 @@ function renderModuleGrid() {
             : 'M 0 100 L 100 100';
 
           return `
-            <div class="module-card">
-              <h3>${MODULE_LABELS[module.id]}</h3>
-              <div class="module-stats">
-                <div class="module-stat">
-                  <div class="k">总题数</div>
-                  <div class="v">${totalQ}</div>
+            <div class="module-detail">
+              <div class="module-detail-header">
+                <h3>${MODULE_LABELS[module.id]}</h3>
+                <span>${user.name} · 近期开题表现</span>
+              </div>
+              <div class="module-stat-cards">
+                <div class="summary-card profile-card profile-card--${user.name}">
+                  <div class="label"><span>总题数</span><span class="dot"></span></div>
+                  <div class="value">${totalQ}</div>
+                  <div class="sub">累计刷题数量</div>
                 </div>
-                <div class="module-stat">
-                  <div class="k">正确率</div>
-                  <div class="v">${formatPercent(avgAccuracy)}</div>
+                <div class="summary-card profile-card profile-card--${user.name}">
+                  <div class="label"><span>答对数量</span><span class="dot"></span></div>
+                  <div class="value">${totalC}</div>
+                  <div class="sub">累计答对题目</div>
                 </div>
-                <div class="module-stat">
-                  <div class="k">答对</div>
-                  <div class="v">${totalC}</div>
+                <div class="summary-card profile-card profile-card--${user.name}">
+                  <div class="label"><span>正确率</span><span class="dot"></span></div>
+                  <div class="value">${formatPercent(avgAccuracy)}</div>
+                  <div class="sub">模块综合表现</div>
                 </div>
-                <div class="module-stat">
-                  <div class="k">平均用时</div>
-                  <div class="v">${avgSeconds.toFixed(0)}s</div>
+                <div class="summary-card profile-card profile-card--${user.name}">
+                  <div class="label"><span>平均用时</span><span class="dot"></span></div>
+                  <div class="value">${avgSeconds.toFixed(0)}<small> 秒</small></div>
+                  <div class="sub">每题平均耗时</div>
                 </div>
               </div>
-              <div class="module-mini-chart">
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <path d="${linePath}" fill="none" stroke="${PERSON_COLORS[user.name]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
-                </svg>
+              <div class="module-chart-grid">
+                <div class="module-chart-panel">
+                  <div class="module-chart-title">模块答题总数趋势</div>
+                  <div class="module-chart-wrap"><canvas id="moduleQuestionTrendChart"></canvas></div>
+                </div>
+                <div class="module-chart-panel">
+                  <div class="module-chart-title">模块正确率按日变化</div>
+                  <div class="module-chart-wrap"><canvas id="moduleAccuracyTrendChart"></canvas></div>
+                </div>
               </div>
             </div>
           `;
         })
         .join('');
 
-      return `
-        <div class="user-module-group">
-          <h3 style="margin:0 0 12px; color: var(--text);">${user.name}</h3>
-          <div style="display:grid; gap:12px;">${userCards}</div>
-        </div>
-      `;
-    })
-    .join('');
+  container.innerHTML = userCard;
+}
+
+function renderProfileTrend() {
+  const user = state.users.find((item) => item.name === state.profilePerson) || state.users[0];
+  if (!user) return;
+  const chartColors = PERSON_CHART_COLORS[user.name] || [PERSON_COLORS[user.name]];
+
+  const dates = getDateList(state.records);
+  const values = dates.map((date) =>
+    state.records
+      .filter((record) => record.person === user.name && record.date === date)
+      .reduce((sum, record) => sum + Number(record.questionCount || 0), 0)
+  );
+  const ctx = document.getElementById('profileTrendChart');
+  if (state.charts.profileTrend) state.charts.profileTrend.destroy();
+
+  state.charts.profileTrend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: `${user.name} 刷题数`,
+        data: values,
+        borderColor: chartColors[0],
+        backgroundColor: `${chartColors[0]}22`,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: chartColors[0],
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+      },
+      scales: {
+        x: { ticks: { color: CHART_TEXT_COLOR }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
+      },
+    },
+  });
+}
+
+function renderModuleCharts() {
+  const user = state.users.find((item) => item.name === state.profilePerson) || state.users[0];
+  const module = state.modules.find((item) => item.id === state.profileModule) || state.modules[0];
+  if (!user || !module) return;
+  const chartColors = PERSON_CHART_COLORS[user.name] || [PERSON_COLORS[user.name]];
+
+  const dates = getDateList(state.records);
+  const moduleRecords = state.records.filter(
+    (record) => record.person === user.name && record.module === module.id
+  );
+  const questionTotals = dates.map((date) =>
+    moduleRecords
+      .filter((record) => record.date === date)
+      .reduce((sum, record) => sum + Number(record.questionCount || 0), 0)
+  );
+  const accuracyTotals = dates.map((date) => {
+    const dailyRecords = moduleRecords.filter((record) => record.date === date);
+    const questions = dailyRecords.reduce((sum, record) => sum + Number(record.questionCount || 0), 0);
+    const correct = dailyRecords.reduce((sum, record) => sum + Number(record.correctCount || 0), 0);
+    return questions ? correct / questions : 0;
+  });
+
+  if (state.charts.moduleQuestionTrend) state.charts.moduleQuestionTrend.destroy();
+  if (state.charts.moduleAccuracyTrend) state.charts.moduleAccuracyTrend.destroy();
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: CHART_TEXT_COLOR }, grid: { display: false } },
+      y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
+    },
+  };
+
+  state.charts.moduleQuestionTrend = new Chart(document.getElementById('moduleQuestionTrendChart'), {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: '答题总数',
+        data: questionTotals,
+        borderColor: chartColors[1] || chartColors[0],
+        backgroundColor: `${chartColors[1] || chartColors[0]}22`,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+      }],
+    },
+    options: chartOptions,
+  });
+
+  state.charts.moduleAccuracyTrend = new Chart(document.getElementById('moduleAccuracyTrendChart'), {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: '正确率',
+        data: accuracyTotals,
+        borderColor: chartColors[2] || chartColors[0],
+        backgroundColor: `${chartColors[2] || chartColors[0]}22`,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+      }],
+    },
+    options: {
+      ...chartOptions,
+      scales: {
+        ...chartOptions.scales,
+        y: {
+          ...chartOptions.scales.y,
+          min: 0,
+          max: 1,
+          ticks: {
+            color: CHART_TEXT_COLOR,
+            callback: (value) => `${value * 100}%`,
+          },
+        },
+      },
+    },
+  });
 }
 
 function renderTable() {
   const tbody = document.getElementById('recordTableBody');
-  const filtered = getFilteredRecords();
+  const filtered = getFilteredRecords().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / state.tablePageSize));
+  state.tablePage = Math.min(state.tablePage, totalPages);
+  const startIndex = (state.tablePage - 1) * state.tablePageSize;
+  const pageRecords = filtered.slice(startIndex, startIndex + state.tablePageSize);
 
-  tbody.innerHTML = filtered
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
+  tbody.innerHTML = pageRecords
     .map((record) => {
       const accuracy = getAccuracy(record);
       const avgSeconds = getAverageSeconds(record);
@@ -661,6 +880,26 @@ function renderTable() {
       `;
     })
     .join('');
+
+  const pagination = document.getElementById('tablePagination');
+  if (!filtered.length) {
+    pagination.innerHTML = '<span class="table-pagination-info">暂无符合条件的记录</span>';
+    return;
+  }
+
+  const pageButtons = Array.from({ length: totalPages }, (_, index) => {
+    const page = index + 1;
+    return `<button type="button" class="table-page-button${page === state.tablePage ? ' active' : ''}" data-page="${page}">${page}</button>`;
+  }).join('');
+
+  pagination.innerHTML = `
+    <span class="table-pagination-info">共 ${filtered.length} 条，每页 ${state.tablePageSize} 条</span>
+    <div class="table-pagination-actions">
+      <button type="button" class="table-page-button" data-page="${state.tablePage - 1}" ${state.tablePage === 1 ? 'disabled' : ''}>上一页</button>
+      ${pageButtons}
+      <button type="button" class="table-page-button" data-page="${state.tablePage + 1}" ${state.tablePage === totalPages ? 'disabled' : ''}>下一页</button>
+    </div>
+  `;
 }
 
 function populateFilters() {
@@ -684,6 +923,24 @@ function populateFilters() {
   recordModule.innerHTML = state.modules
     .map((module) => `<option value="${module.id}">${module.name}</option>`)
     .join('');
+
+  const switcher = document.getElementById('profilePersonSwitcher');
+  switcher.innerHTML = state.users
+    .map((user) => `<button class="profile-person-button" type="button" data-person="${user.name}">${user.name}</button>`)
+    .join('');
+
+  const moduleSwitcher = document.getElementById('profileModuleSwitcher');
+  moduleSwitcher.innerHTML = state.modules
+    .map((module) => `<button class="profile-module-button" type="button" data-module="${module.id}">${module.name}</button>`)
+    .join('');
+
+  if (!state.modules.some((module) => module.id === state.profileModule)) {
+    state.profileModule = state.modules[0]?.id || '';
+  }
+
+  if (!state.users.some((user) => user.name === state.profilePerson)) {
+    state.profilePerson = state.users[0]?.name || '';
+  }
 
   document.getElementById('recordDate').valueAsDate = new Date();
 }
@@ -720,12 +977,42 @@ function bindEvents() {
 
   document.getElementById('personFilter').addEventListener('change', (e) => {
     state.selectedPerson = e.target.value;
+    state.tablePage = 1;
     renderTable();
   });
 
   document.getElementById('moduleFilter').addEventListener('change', (e) => {
     state.selectedModule = e.target.value;
+    state.tablePage = 1;
     renderTable();
+  });
+
+  document.getElementById('tablePagination').addEventListener('click', (e) => {
+    const button = e.target.closest('[data-page]');
+    if (!button || button.disabled) return;
+    state.tablePage = Number(button.dataset.page);
+    renderTable();
+  });
+
+  document.getElementById('profilePersonSwitcher').addEventListener('click', (e) => {
+    const button = e.target.closest('.profile-person-button');
+    if (!button) return;
+    state.profilePerson = button.dataset.person;
+    renderProfileOverview();
+    renderProfileTrend();
+    renderModuleGrid();
+    renderModuleCharts();
+  });
+
+  document.getElementById('profileModuleSwitcher').addEventListener('click', (e) => {
+    const button = e.target.closest('.profile-module-button');
+    if (!button) return;
+    state.profileModule = button.dataset.module;
+    document.querySelectorAll('.profile-module-button').forEach((item) => {
+      item.classList.toggle('active', item.dataset.module === state.profileModule);
+    });
+    renderModuleGrid();
+    renderModuleCharts();
   });
 
   document.getElementById('recordForm').addEventListener('submit', (e) => {
@@ -751,9 +1038,10 @@ function bindEvents() {
     };
 
     state.records.push(newRecord);
+    saveLocalRecord(newRecord);
     form.reset();
     document.getElementById('recordDate').valueAsDate = new Date();
-    document.getElementById('formMessage').textContent = '记录已添加';
+    document.getElementById('formMessage').textContent = '记录已保存到本机浏览器';
     renderAll();
   });
 
@@ -763,7 +1051,7 @@ function bindEvents() {
     const newRecords = await loadJson('./data/records.json');
     state.users = newUsers;
     state.modules = newModules;
-    state.records = newRecords;
+    state.records = mergeRecords(newRecords);
     populateFilters();
     renderAll();
     bindHeatmapTooltip();
@@ -779,7 +1067,12 @@ function renderAll() {
   renderLineChart();
   renderBarChart();
   renderProfileOverview();
+  renderProfileTrend();
   renderModuleGrid();
+  renderModuleCharts();
+  document.querySelectorAll('.profile-module-button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.module === state.profileModule);
+  });
   renderTable();
 }
 
@@ -787,7 +1080,7 @@ async function init() {
   try {
     state.users = await loadJson('./data/users.json');
     state.modules = await loadJson('./data/modules.json');
-    state.records = await loadJson('./data/records.json');
+    state.records = mergeRecords(await loadJson('./data/records.json'));
     populateFilters();
     bindEvents();
     setActiveView(state.activeView);

@@ -128,10 +128,19 @@
             <section class="panel personal-panel">
               <div class="panel-header">
                 <h2>个人看板</h2>
+                <div id="profilePersonSwitcher" class="profile-switcher" role="tablist" aria-label="选择人物"></div>
               </div>
 
-              <div class="profile-overview" id="profileOverview"></div>
+              <div id="profileOverview" class="profile-overview"></div>
 
+              <div class="profile-trend">
+                <div class="profile-section-title">答题总数趋势</div>
+                <div class="profile-trend-chart">
+                  <canvas id="profileTrendChart"></canvas>
+                </div>
+              </div>
+
+              <div class="module-switcher" id="profileModuleSwitcher" role="tablist" aria-label="选择模块"></div>
               <div class="module-grid" id="moduleGrid"></div>
             </section>
           </section>
@@ -166,6 +175,7 @@
                   <tbody id="recordTableBody"></tbody>
                 </table>
               </div>
+              <div id="tablePagination" class="table-pagination"></div>
             </section>
           </section>
 
