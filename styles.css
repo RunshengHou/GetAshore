@@ -812,8 +812,22 @@ select {
 
 .module-chart-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+
+.module-chart-panel--wide {
+  grid-column: 1 / -1;
+}
+
+.module-chart-empty {
+  padding: 36px 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  grid-column: 1 / -1;
 }
 
 .module-chart-panel {

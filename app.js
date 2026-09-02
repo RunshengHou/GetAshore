@@ -24,6 +24,15 @@ const MODULE_COLORS = {
   data: '#8cd06a',
 };
 
+// 个人看板中每个模块三张图的彩色配色（与人物总面板的单色系区分开）
+const MODULE_CHART_COLORS = {
+  politics: ['#14b8a6', '#0ea5e9', '#8b5cf6'],
+  quantity: ['#f59e0b', '#f43f5e', '#14b8a6'],
+  language: ['#3b82f6', '#22c55e', '#f59e0b'],
+  logic: ['#ec4899', '#8b5cf6', '#22c55e'],
+  data: ['#84cc16', '#0ea5e9', '#f97316'],
+};
+
 const CHART_TEXT_COLOR = '#5f7087';
 const CHART_GRID_COLOR = 'rgba(95, 112, 135, 0.15)';
 const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
@@ -762,25 +771,6 @@ function renderModuleGrid() {
           );
           const avgSeconds = totalQ ? totalDurationSeconds / totalQ : 0;
 
-          const trendData = getDateList(state.records)
-            .slice(-7)
-            .map((date) => {
-              const dayTotal = records
-                .filter((r) => r.date === date)
-                .reduce((sum, item) => sum + Number(item.questionCount || 0), 0);
-              return dayTotal;
-            });
-
-          const linePath = trendData.length
-            ? trendData
-                .map((value, index) => {
-                  const x = (index / Math.max(trendData.length - 1, 1)) * 100;
-                  const y = 100 - (value / Math.max(Math.max(...trendData), 1)) * 100;
-                  return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-                })
-                .join(' ')
-            : 'M 0 100 L 100 100';
-
           return `
             <div class="module-detail">
               <div class="module-detail-header">
@@ -810,14 +800,22 @@ function renderModuleGrid() {
                 </div>
               </div>
               <div class="module-chart-grid">
-                <div class="module-chart-panel">
-                  <div class="module-chart-title">模块答题总数趋势</div>
+                ${records.length
+                  ? `
+                <div class="module-chart-panel module-chart-panel--wide">
+                  <div class="module-chart-title">模块每次提交答题数</div>
                   <div class="module-chart-wrap"><canvas id="moduleQuestionTrendChart"></canvas></div>
                 </div>
                 <div class="module-chart-panel">
-                  <div class="module-chart-title">模块正确率按日变化</div>
+                  <div class="module-chart-title">模块每次提交正确率</div>
                   <div class="module-chart-wrap"><canvas id="moduleAccuracyTrendChart"></canvas></div>
                 </div>
+                <div class="module-chart-panel">
+                  <div class="module-chart-title">模块每次提交平均用时（秒/题）</div>
+                  <div class="module-chart-wrap"><canvas id="moduleDurationTrendChart"></canvas></div>
+                </div>`
+                  : `
+                <div class="module-chart-empty">该模块暂无提交记录</div>`}
               </div>
             </div>
           `;
@@ -874,74 +872,107 @@ function renderModuleCharts() {
   const user = state.users.find((item) => item.name === state.profilePerson) || state.users[0];
   const module = state.modules.find((item) => item.id === state.profileModule) || state.modules[0];
   if (!user || !module) return;
-  const chartColors = PERSON_CHART_COLORS[user.name] || [PERSON_COLORS[user.name]];
 
-  const dates = getDateList(state.records);
-  const moduleRecords = state.records.filter(
-    (record) => record.person === user.name && record.module === module.id
-  );
-  const questionTotals = dates.map((date) =>
-    moduleRecords
-      .filter((record) => record.date === date)
-      .reduce((sum, record) => sum + Number(record.questionCount || 0), 0)
-  );
-  const accuracyTotals = dates.map((date) => {
-    const dailyRecords = moduleRecords.filter((record) => record.date === date);
-    const questions = dailyRecords.reduce((sum, record) => sum + Number(record.questionCount || 0), 0);
-    const correct = dailyRecords.reduce((sum, record) => sum + Number(record.correctCount || 0), 0);
-    return questions ? correct / questions : 0;
-  });
+  const destroyModuleCharts = () => {
+    ['moduleQuestionTrend', 'moduleAccuracyTrend', 'moduleDurationTrend'].forEach((key) => {
+      if (state.charts[key]) {
+        state.charts[key].destroy();
+        delete state.charts[key];
+      }
+    });
+  };
 
-  if (state.charts.moduleQuestionTrend) state.charts.moduleQuestionTrend.destroy();
-  if (state.charts.moduleAccuracyTrend) state.charts.moduleAccuracyTrend.destroy();
+  // 每次提交 = 一个数据点：按日期、id 升序排列
+  const submissions = state.records
+    .filter((record) => record.person === user.name && record.module === module.id)
+    .sort((a, b) => (a.date === b.date ? Number(a.id) - Number(b.id) : a.date < b.date ? -1 : 1));
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: CHART_TEXT_COLOR }, grid: { display: false } },
-      y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
-    },
+  if (!submissions.length) {
+    destroyModuleCharts();
+    return;
+  }
+
+  const palette = MODULE_CHART_COLORS[module.id] || ['#4e9cf5', '#7cb9f8', '#c0ddff'];
+  const labels = submissions.map((record) => record.date);
+  const questionTotals = submissions.map((record) => Number(record.questionCount || 0));
+  const accuracyValues = submissions.map((record) => getAccuracy(record));
+  const durationValues = submissions.map((record) => getAverageSeconds(record));
+
+  destroyModuleCharts();
+
+  const axisStyle = {
+    x: { ticks: { color: CHART_TEXT_COLOR }, grid: { display: false } },
+    y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
+  };
+
+  const tooltipTitle = (items) => {
+    const item = items && items[0];
+    if (!item) return '';
+    return `第 ${item.dataIndex + 1} 次提交 · ${labels[item.dataIndex]}`;
   };
 
   state.charts.moduleQuestionTrend = new Chart(document.getElementById('moduleQuestionTrendChart'), {
     type: 'line',
     data: {
-      labels: dates,
+      labels,
       datasets: [{
-        label: '答题总数',
+        label: '每次提交答题数',
         data: questionTotals,
-        borderColor: chartColors[1] || chartColors[0],
-        backgroundColor: `${chartColors[1] || chartColors[0]}22`,
+        borderColor: palette[0],
+        backgroundColor: `${palette[0]}22`,
         fill: true,
         tension: 0.35,
         pointRadius: 3,
+        pointBackgroundColor: palette[0],
       }],
     },
-    options: chartOptions,
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: tooltipTitle,
+            label: (ctx) => `答题数：${ctx.parsed.y} 题`,
+          },
+        },
+      },
+      scales: axisStyle,
+    },
   });
 
   state.charts.moduleAccuracyTrend = new Chart(document.getElementById('moduleAccuracyTrendChart'), {
     type: 'line',
     data: {
-      labels: dates,
+      labels,
       datasets: [{
-        label: '正确率',
-        data: accuracyTotals,
-        borderColor: chartColors[2] || chartColors[0],
-        backgroundColor: `${chartColors[2] || chartColors[0]}22`,
+        label: '每次提交正确率',
+        data: accuracyValues,
+        borderColor: palette[1],
+        backgroundColor: `${palette[1]}22`,
         fill: true,
         tension: 0.35,
         pointRadius: 3,
+        pointBackgroundColor: palette[1],
       }],
     },
     options: {
-      ...chartOptions,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: tooltipTitle,
+            label: (ctx) => `正确率：${(ctx.parsed.y * 100).toFixed(1)}%`,
+          },
+        },
+      },
       scales: {
-        ...chartOptions.scales,
+        ...axisStyle,
         y: {
-          ...chartOptions.scales.y,
+          ...axisStyle.y,
           min: 0,
           max: 1,
           ticks: {
@@ -950,6 +981,37 @@ function renderModuleCharts() {
           },
         },
       },
+    },
+  });
+
+  state.charts.moduleDurationTrend = new Chart(document.getElementById('moduleDurationTrendChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '每次提交平均用时',
+        data: durationValues,
+        borderColor: palette[2],
+        backgroundColor: `${palette[2]}22`,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: palette[2],
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: tooltipTitle,
+            label: (ctx) => `平均用时：${ctx.parsed.y.toFixed(1)} 秒/题`,
+          },
+        },
+      },
+      scales: axisStyle,
     },
   });
 }
