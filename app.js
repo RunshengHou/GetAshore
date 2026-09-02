@@ -136,15 +136,33 @@ function renderHeatmap() {
     container.appendChild(userChartDiv);
 
     // 准备数据
-    const data = state.records
+    let data = state.records
       .filter((r) => r.person === user.name)
       .map((r) => [r.date, Number(r.questionCount || 0)])
       .sort((a, b) => a[0].localeCompare(b[0]));
 
     // 获取日期范围
-    const dates = data.map((d) => d[0]);
-    const minDate = dates.length ? dates[0] : new Date().toISOString().slice(0, 10);
-    const maxDate = dates.length ? dates[dates.length - 1] : new Date().toISOString().slice(0, 10);
+    if (data.length === 0) {
+      data = [];
+    }
+
+    // 计算最早和最晚日期，确保填充
+    let minDate = data.length ? data[0][0] : new Date().toISOString().slice(0, 10);
+    let maxDate = data.length ? data[data.length - 1][0] : new Date().toISOString().slice(0, 10);
+
+    // 创建一个日期集合方便查找
+    const dataMap = new Map(data);
+
+    // 填充所有日期（包括没有数据的日期，显示为 0）
+    const minDateObj = new Date(minDate);
+    const maxDateObj = new Date(maxDate);
+    const allDates = [];
+
+    for (let d = new Date(minDateObj); d <= maxDateObj; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().slice(0, 10);
+      const count = dataMap.has(dateStr) ? dataMap.get(dateStr) : 0;
+      allDates.push([dateStr, count]);
+    }
 
     // 初始化 ECharts
     const chart = echarts.init(userChartDiv);
@@ -170,17 +188,6 @@ function renderHeatmap() {
           return '';
         },
       },
-      visualMap: {
-        min: 0,
-        max: 50,
-        inRange: {
-          color: ['#ebedf0', '#c7e9c0', '#7bc87c', '#2fae66', '#1f7a3f'],
-        },
-        calculable: false,
-        orient: 'horizontal',
-        right: '10%',
-        top: 0,
-      },
       calendar: {
         range: [minDate, maxDate],
         cellSize: [13, 13],
@@ -194,18 +201,31 @@ function renderHeatmap() {
           borderWidth: 1,
         },
         dayLabel: {
-          nameMap: 'cn',
+          nameMap: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
           firstDay: 1,
+          interval: 1,
+          textStyle: {
+            color: '#94a3b8',
+            fontSize: 11,
+          },
         },
         monthLabel: {
-          nameMap: 'cn',
+          show: false,
+        },
+      },
+      visualMap: {
+        show: false,
+        min: 0,
+        max: 50,
+        inRange: {
+          color: ['#ebedf0', '#c7e9c0', '#7bc87c', '#2fae66', '#1f7a3f'],
         },
       },
       series: [
         {
           type: 'heatmap',
           coordinateSystem: 'calendar',
-          data: data,
+          data: allDates,
           itemStyle: {
             borderRadius: 2,
           },
