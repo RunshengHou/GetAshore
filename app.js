@@ -731,8 +731,11 @@ function renderProfileOverview() {
   const totalC = records.reduce((sum, r) => sum + Number(r.correctCount || 0), 0);
   const avgAccuracy = totalQ ? totalC / totalQ : 0;
   const dates = new Set(records.map((r) => r.date));
-  const durationSum = records.reduce((sum, r) => sum + Number(r.durationMinutes || 0), 0);
-  const avgMinutes = records.length ? durationSum / records.length : 0;
+  const durationSeconds = records.reduce(
+    (sum, r) => sum + Number(r.durationMinutes || 0) * 60,
+    0
+  );
+  const avgSeconds = totalQ ? durationSeconds / totalQ : 0;
 
   const personalCards = [
     {
@@ -755,8 +758,8 @@ function renderProfileOverview() {
     },
     {
       label: '平均用时',
-      value: `${avgMinutes.toFixed(1)}<small> 分</small>`,
-      sub: `共 ${records.length} 条记录`,
+      value: `${avgSeconds.toFixed(0)}<small> 秒/题</small>`,
+      sub: `每题平均耗时 · 共 ${records.length} 条记录`,
       tone: 'purple',
     },
   ];
@@ -893,6 +896,71 @@ function renderProfileTrend() {
       scales: {
         x: { ticks: { ...TREND_X_TICKS }, grid: { display: false } },
         y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
+      },
+    },
+  });
+}
+
+// 各模块正确率五边形：累计当前人物所有提交、分模块的正确率
+function renderProfileRadar() {
+  const user = state.users.find((item) => item.name === state.profilePerson) || state.users[0];
+  if (!user) return;
+  const color = PERSON_COLORS[user.name] || '#4e9cf5';
+
+  const personRecords = state.records.filter((record) => record.person === user.name);
+  const labels = state.modules.map((module) => module.name);
+  const values = state.modules.map((module) => {
+    const moduleRecords = personRecords.filter((record) => record.module === module.id);
+    const questions = moduleRecords.reduce((sum, record) => sum + Number(record.questionCount || 0), 0);
+    const correct = moduleRecords.reduce((sum, record) => sum + Number(record.correctCount || 0), 0);
+    return questions ? correct / questions : 0;
+  });
+
+  const ctx = document.getElementById('profileRadarChart');
+  if (!ctx) return;
+  if (state.charts.profileRadar) state.charts.profileRadar.destroy();
+
+  state.charts.profileRadar = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        label: `${user.name} 各模块正确率`,
+        data: values,
+        borderColor: color,
+        backgroundColor: `${color}33`,
+        pointBackgroundColor: color,
+        pointBorderColor: '#ffffff',
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          min: 0,
+          max: 1,
+          angleLines: { color: CHART_GRID_COLOR },
+          grid: { color: CHART_GRID_COLOR },
+          pointLabels: { color: CHART_TEXT_COLOR, font: { size: 12, weight: '600' } },
+          ticks: {
+            stepSize: 0.2,
+            color: CHART_TEXT_COLOR,
+            backdropColor: 'transparent',
+            callback: (value) => `${value * 100}%`,
+          },
+        },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.label}：${(ctx.parsed.r * 100).toFixed(1)}%`,
+          },
+        },
       },
     },
   });
@@ -1279,6 +1347,7 @@ function bindEvents() {
     state.profilePerson = button.dataset.person;
     renderProfileOverview();
     renderProfileTrend();
+    renderProfileRadar();
     renderModuleGrid();
     renderModuleCharts();
   });
@@ -1382,6 +1451,7 @@ function renderAll() {
   renderBarChart();
   renderProfileOverview();
   renderProfileTrend();
+  renderProfileRadar();
   renderModuleGrid();
   renderModuleCharts();
   document.querySelectorAll('.profile-module-button').forEach((button) => {
