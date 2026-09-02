@@ -256,6 +256,10 @@ function renderDailyPieCharts() {
   });
 }
 
+function isCompactHeatmap() {
+  return window.matchMedia('(max-width: 720px)').matches;
+}
+
 function renderHeatmap() {
   const container = document.getElementById('heatmapContainer');
   container.innerHTML = '';
@@ -265,8 +269,10 @@ function renderHeatmap() {
   const endDate = new Date();
   const today = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
 
+  // 移动端缩短热力图范围，避免横向溢出
+  const rangeMonths = isCompactHeatmap() ? 3 : 6;
   const startDate = new Date(today);
-  startDate.setMonth(today.getMonth() - 6);
+  startDate.setMonth(today.getMonth() - rangeMonths);
 
   const gridStart = new Date(startDate);
   gridStart.setDate(startDate.getDate() - startDate.getDay());
@@ -333,7 +339,7 @@ function renderHeatmap() {
         <div class="heatmap-label">${user.name}</div>
         <div class="heatmap-content">
           ${showMonthLabels ? `
-            <div class="heatmap-months" style="grid-template-columns: repeat(${totalWeeks}, 12px);">
+            <div class="heatmap-months" style="grid-template-columns: repeat(${totalWeeks}, var(--hm-cell));">
               ${monthLabels
                 .map(
                   (item) => `
@@ -355,7 +361,7 @@ function renderHeatmap() {
                 )
                 .join('')}
             </div>
-            <div class="heatmap-grid" style="grid-template-columns: repeat(${totalWeeks}, 12px); grid-template-rows: repeat(7, 12px);">
+            <div class="heatmap-grid" style="grid-template-columns: repeat(${totalWeeks}, var(--hm-cell)); grid-template-rows: repeat(7, var(--hm-cell));">
               ${cells
                 .map(
                   (cell) => `
@@ -1131,6 +1137,16 @@ function bindEvents() {
     populateFilters();
     renderAll();
     bindHeatmapTooltip();
+  });
+
+  // 跨移动端断点时自动重绘热力图，避免布局残留
+  let lastCompactHeatmap = isCompactHeatmap();
+  window.addEventListener('resize', () => {
+    const compact = isCompactHeatmap();
+    if (compact !== lastCompactHeatmap) {
+      lastCompactHeatmap = compact;
+      renderHeatmap();
+    }
   });
 }
 
