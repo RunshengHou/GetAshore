@@ -397,21 +397,6 @@ select {
   min-width: 0;
 }
 
-.daily-pie-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 8px;
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.daily-pie-title span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .daily-pie-wrap {
   position: relative;
   height: 250px;

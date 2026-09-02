@@ -53,6 +53,34 @@ const TREND_X_TICKS = {
 const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
 const WORKER_URL = 'https://getashore.hourunsheng.workers.dev';
 
+// 加载性能优化：配置短时缓存 + 记录缓存 + 网络超时兜底
+const CACHE_PREFIX = 'study-dashboard-cache';
+const CONFIG_CACHE_TTL_MS = 60 * 1000; // 静态配置缓存 60 秒
+const FETCH_TIMEOUT_MS = 3500; // 网络请求（Worker）超时，避免长时间停顿
+
+function cacheGet(key) {
+  try {
+    const raw = sessionStorage.getItem(`${CACHE_PREFIX}:${key}`);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (entry.ttl && Date.now() - entry.t > entry.ttl) return null;
+    return entry.v;
+  } catch (error) {
+    return null;
+  }
+}
+
+function cacheSet(key, value, ttl = null) {
+  try {
+    sessionStorage.setItem(
+      `${CACHE_PREFIX}:${key}`,
+      JSON.stringify({ t: Date.now(), ttl, v: value })
+    );
+  } catch (error) {
+    // sessionStorage 不可用时静默忽略
+  }
+}
+
 const state = {
   users: [],
   modules: [],
@@ -75,30 +103,48 @@ const pageTitles = {
   form: '提交表单',
 };
 
-async function loadJson(path) {
-  const cacheBust = `?t=${Date.now()}`;
+async function loadJson(path, useCache = false) {
+  if (useCache) {
+    const hit = cacheGet(path);
+    if (hit) return hit;
+  }
   const url = `${path}${path.includes('?') ? '&' : '?'}_=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`加载失败: ${path}`);
   }
-  return res.json();
+  const data = await res.json();
+  if (useCache) cacheSet(path, data, CONFIG_CACHE_TTL_MS);
+  return data;
+}
+
+function fetchWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { cache: 'no-store', signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
 }
 
 // 优先从 Worker 读取仓库 main 的最新记录（GitHub Pages 静态文件有部署延迟，可能滞后）
 async function fetchRemoteRecords() {
   if (WORKER_URL) {
     try {
-      const res = await fetch(WORKER_URL, { cache: 'no-store' });
+      const res = await fetchWithTimeout(WORKER_URL, FETCH_TIMEOUT_MS);
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.records)) {
+          cacheSet('records', data.records);
           return data.records;
         }
       }
     } catch (error) {
-      // 网络或 Worker 不可用时，退回静态文件
+      // 超时或网络不可用 → 退回会话缓存 / 静态文件
     }
+  }
+  const cached = cacheGet('records');
+  if (cached && Array.isArray(cached)) {
+    return cached;
   }
   return loadJson('./data/records.json');
 }
@@ -291,7 +337,6 @@ function renderDailyPieCharts() {
           <div class="panel-header">
             <h2>${user.name} 当日刷题构成</h2>
           </div>
-          <div class="daily-pie-title">${user.name}<span>${today}</span></div>
           <div class="daily-pie-wrap">
             <canvas id="dailyPieChart-${user.name}"></canvas>
           </div>
@@ -1410,10 +1455,12 @@ function bindEvents() {
   });
 
   document.getElementById('refreshDataBtn').addEventListener('click', async () => {
-    const newUsers = await loadJson('./data/users.json');
-    const newModules = await loadJson('./data/modules.json');
-    state.users = newUsers;
-    state.modules = newModules;
+    const [users, modules] = await Promise.all([
+      loadJson('./data/users.json', true),
+      loadJson('./data/modules.json', true),
+    ]);
+    state.users = users;
+    state.modules = modules;
     await reloadRecordsAndRender();
     populateFilters();
     renderAll();
@@ -1452,12 +1499,26 @@ function renderAll() {
 
 async function init() {
   try {
-    state.users = await loadJson('./data/users.json');
-    state.modules = await loadJson('./data/modules.json');
-    state.records = mergeRecords(await fetchRemoteRecords());
+    // 并行加载静态配置（命中缓存则秒开），避免串行请求拖慢首屏
+    const [users, modules] = await Promise.all([
+      loadJson('./data/users.json', true),
+      loadJson('./data/modules.json', true),
+    ]);
+    state.users = users;
+    state.modules = modules;
     populateFilters();
     bindEvents();
     setActiveView(state.activeView);
+
+    // 先用会话缓存立即渲染，避免白屏/停顿感；随后用 Worker 最新数据整体刷新
+    const cachedRecords = cacheGet('records');
+    if (cachedRecords && Array.isArray(cachedRecords)) {
+      state.records = mergeRecords(cachedRecords);
+      renderAll();
+    }
+
+    const remote = await fetchRemoteRecords();
+    state.records = mergeRecords(remote);
     renderAll();
   } catch (error) {
     console.error(error);
