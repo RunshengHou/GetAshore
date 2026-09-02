@@ -27,6 +27,7 @@ const MODULE_COLORS = {
 const CHART_TEXT_COLOR = '#537276';
 const CHART_GRID_COLOR = 'rgba(83, 114, 118, 0.14)';
 const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
+const WORKER_URL = 'https://getashore.hourunsheng.workers.dev';
 
 const state = {
   users: [],
@@ -1015,14 +1016,15 @@ function bindEvents() {
     renderModuleCharts();
   });
 
-  document.getElementById('recordForm').addEventListener('submit', (e) => {
+  document.getElementById('recordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
     const questionCount = Number(document.getElementById('questionCount').value);
     const correctCount = Number(document.getElementById('correctCount').value);
+    const formMessage = document.getElementById('formMessage');
 
     if (correctCount > questionCount) {
-      document.getElementById('formMessage').textContent = '正确数量不能大于题目数量';
+      formMessage.textContent = '正确数量不能大于题目数量';
       return;
     }
 
@@ -1037,12 +1039,39 @@ function bindEvents() {
       note: '',
     };
 
-    state.records.push(newRecord);
-    saveLocalRecord(newRecord);
-    form.reset();
-    document.getElementById('recordDate').valueAsDate = new Date();
-    document.getElementById('formMessage').textContent = '记录已保存到本机浏览器';
-    renderAll();
+    formMessage.textContent = '正在提交...';
+
+    if (WORKER_URL) {
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newRecord),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          formMessage.textContent = `提交失败: ${result.error || response.status}`;
+          return;
+        }
+        state.records.push(newRecord);
+        form.reset();
+        document.getElementById('recordDate').valueAsDate = new Date();
+        formMessage.textContent = '记录已保存到 GitHub，正在刷新数据...';
+        const newRecords = await loadJson('./data/records.json');
+        state.records = mergeRecords(newRecords);
+        renderAll();
+      } catch (error) {
+        formMessage.textContent = '提交失败，请检查网络或 Worker 配置';
+      }
+    } else {
+      // 尚未配置 Worker 时，退回本机保存
+      state.records.push(newRecord);
+      saveLocalRecord(newRecord);
+      form.reset();
+      document.getElementById('recordDate').valueAsDate = new Date();
+      formMessage.textContent = '记录已保存到本机浏览器（未配置 Worker）';
+      renderAll();
+    }
   });
 
   document.getElementById('refreshDataBtn').addEventListener('click', async () => {

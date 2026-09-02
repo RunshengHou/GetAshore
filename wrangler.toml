@@ -1,0 +1,14 @@
+# Cloudflare Worker 配置 - 上岸学习数据看板
+# 部署命令：npx wrangler deploy
+# 注意：GITHUB_TOKEN 是密钥，不要写在这里，用下面的命令单独设置：
+#   npx wrangler secret put GITHUB_TOKEN
+
+name = "getashore"
+main = "worker/worker.js"
+compatibility_date = "2026-09-02"
+
+# 非敏感环境变量（可在网页 Settings 里修改，也可在这里声明）
+[vars]
+GITHUB_OWNER = "RunshengHou"
+GITHUB_REPO = "GetAshore"
+GITHUB_BRANCH = "main"
