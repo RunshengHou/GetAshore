@@ -35,6 +35,21 @@ const MODULE_CHART_COLORS = {
 
 const CHART_TEXT_COLOR = '#5f7087';
 const CHART_GRID_COLOR = 'rgba(95, 112, 135, 0.15)';
+
+// 时间序列折线图展示窗口：最多保留最近 N 天（含今天）。
+// 数据天数不超过 N 时全部展示；超过后滑动窗口只显示【今天-(N-1)天, 今天】。
+const MAX_TREND_DAYS = 30;
+
+// 时间序列 X 轴刻度：抽稀 + 过长自动旋转，保证数据变多仍清晰
+const TREND_X_TICKS = {
+  color: CHART_TEXT_COLOR,
+  maxRotation: 45,
+  minRotation: 0,
+  autoSkip: true,
+  autoSkipPadding: 8,
+  maxTicksLimit: 14,
+};
+
 const LOCAL_RECORDS_KEY = 'study-dashboard-local-records';
 const WORKER_URL = 'https://getashore.hourunsheng.workers.dev';
 
@@ -161,6 +176,20 @@ function getAverageSeconds(record) {
 function getDateList(records) {
   const uniqueDates = new Set(records.map((r) => r.date));
   return [...uniqueDates].sort();
+}
+
+function getTrendWindowStart() {
+  const d = new Date();
+  d.setDate(d.getDate() - (MAX_TREND_DAYS - 1));
+  return formatLocalDate(d);
+}
+
+// 只保留在滑动窗口内的日期（升序数组）
+function trimTrendDates(dates) {
+  const start = getTrendWindowStart();
+  const idx = dates.findIndex((date) => date >= start);
+  if (idx === -1) return [];
+  return idx > 0 ? dates.slice(idx) : dates;
 }
 
 function getFilteredRecords() {
@@ -529,7 +558,7 @@ function renderRadarChart() {
 }
 
 function renderLineChart() {
-  const dates = getDateList(state.records);
+  const dates = trimTrendDates(getDateList(state.records));
   const datasets = state.users.map((user) => ({
     label: user.name,
     data: dates.map((date) =>
@@ -568,7 +597,7 @@ function renderLineChart() {
       },
       scales: {
         x: {
-          ticks: { color: CHART_TEXT_COLOR },
+          ticks: { ...TREND_X_TICKS },
           grid: { color: CHART_GRID_COLOR },
         },
         y: {
@@ -762,6 +791,7 @@ function renderModuleGrid() {
   const userCard = [module]
         .map((module) => {
           const records = state.records.filter((r) => r.person === user.name && r.module === module.id);
+          const windowRecords = records.filter((r) => r.date >= getTrendWindowStart());
           const totalQ = records.reduce((sum, r) => sum + Number(r.questionCount || 0), 0);
           const totalC = records.reduce((sum, r) => sum + Number(r.correctCount || 0), 0);
           const avgAccuracy = totalQ ? totalC / totalQ : 0;
@@ -800,7 +830,7 @@ function renderModuleGrid() {
                 </div>
               </div>
               <div class="module-chart-grid">
-                ${records.length
+                ${windowRecords.length
                   ? `
                 <div class="module-chart-panel module-chart-panel--wide">
                   <div class="module-chart-title">模块答题总数趋势</div>
@@ -815,7 +845,7 @@ function renderModuleGrid() {
                   <div class="module-chart-wrap"><canvas id="moduleDurationTrendChart"></canvas></div>
                 </div>`
                   : `
-                <div class="module-chart-empty">该模块暂无提交记录</div>`}
+                <div class="module-chart-empty">该模块近 ${MAX_TREND_DAYS} 天暂无提交记录</div>`}
               </div>
             </div>
           `;
@@ -830,7 +860,7 @@ function renderProfileTrend() {
   if (!user) return;
   const chartColors = PERSON_CHART_COLORS[user.name] || [PERSON_COLORS[user.name]];
 
-  const dates = getDateList(state.records);
+  const dates = trimTrendDates(getDateList(state.records));
   const values = dates.map((date) =>
     state.records
       .filter((record) => record.person === user.name && record.date === date)
@@ -861,7 +891,7 @@ function renderProfileTrend() {
         legend: { display: false },
       },
       scales: {
-        x: { ticks: { color: CHART_TEXT_COLOR }, grid: { display: false } },
+        x: { ticks: { ...TREND_X_TICKS }, grid: { display: false } },
         y: { beginAtZero: true, ticks: { color: CHART_TEXT_COLOR }, grid: { color: CHART_GRID_COLOR } },
       },
     },
@@ -882,9 +912,10 @@ function renderModuleCharts() {
     });
   };
 
-  // 每次提交 = 一个数据点：按日期、id 升序排列
+  // 每次提交 = 一个数据点：只取滑动窗口内记录，按日期、id 升序排列
   const submissions = state.records
     .filter((record) => record.person === user.name && record.module === module.id)
+    .filter((record) => record.date >= getTrendWindowStart())
     .sort((a, b) => (a.date === b.date ? Number(a.id) - Number(b.id) : a.date < b.date ? -1 : 1));
 
   if (!submissions.length) {
@@ -916,7 +947,7 @@ function renderModuleCharts() {
   const moduleRecords = state.records.filter(
     (record) => record.person === user.name && record.module === module.id
   );
-  const dateList = getDateList(state.records);
+  const dateList = trimTrendDates(getDateList(state.records));
   const questionTotals = dateList.map((date) =>
     moduleRecords
       .filter((record) => record.date === date)
