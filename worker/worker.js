@@ -58,8 +58,11 @@ export default {
     }
 
     const { GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH, GITHUB_TOKEN } = env;
-    if (!GITHUB_OWNER || !GITHUB_REPO || !GITHUB_BRANCH || !GITHUB_TOKEN) {
-      return jsonResponse({ ok: false, error: 'Worker 环境变量未配置完整' }, 500);
+    const missingVars = ['GITHUB_OWNER', 'GITHUB_REPO', 'GITHUB_BRANCH', 'GITHUB_TOKEN'].filter(
+      (key) => !env[key]
+    );
+    if (missingVars.length) {
+      return jsonResponse({ ok: false, error: `缺少环境变量: ${missingVars.join(', ')}` }, 500);
     }
 
     let record;
