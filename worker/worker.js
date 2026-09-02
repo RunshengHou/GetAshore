@@ -23,10 +23,49 @@ function jsonResponse(data, status = 200) {
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });
+}
+
+async function readRecords(env, authHeaders) {
+  const url = FILE_URL(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH);
+  const res = await fetch(url, { headers: authHeaders });
+  if (res.status === 404) {
+    return { ok: true, records: [], sha: null };
+  }
+  if (!res.ok) {
+    const detail = await res.text();
+    return { ok: false, error: `读取记录失败: ${res.status}`, detail: detail.slice(0, 400) };
+  }
+  const fileData = await res.json();
+  try {
+    return { ok: true, records: JSON.parse(base64Decode(fileData.content)), sha: fileData.sha };
+  } catch (error) {
+    return { ok: false, error: 'records.json 内容解析失败' };
+  }
+}
+
+async function writeRecords(env, authHeaders, sha, records, message) {
+  const url = FILE_URL(env.GITHUB_OWNER, env.GITHUB_REPO, env.GITHUB_BRANCH);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      ...authHeaders,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message,
+      content: base64Encode(JSON.stringify(records, null, 2)),
+      sha,
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    return { ok: false, error: `写入记录失败: ${res.status}`, detail };
+  }
+  return { ok: true };
 }
 
 function base64Encode(text) {
@@ -71,23 +110,12 @@ export default {
       return jsonResponse({ ok: true });
     }
 
-    if (request.method !== 'POST') {
-      return jsonResponse({ ok: false, error: '仅支持 POST 请求' }, 405);
-    }
-
     const { GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH, GITHUB_TOKEN } = env;
     const missingVars = ['GITHUB_OWNER', 'GITHUB_REPO', 'GITHUB_BRANCH', 'GITHUB_TOKEN'].filter(
       (key) => !env[key]
     );
     if (missingVars.length) {
       return jsonResponse({ ok: false, error: `缺少环境变量: ${missingVars.join(', ')}` }, 500);
-    }
-
-    let payload;
-    try {
-      payload = await request.json();
-    } catch (error) {
-      return jsonResponse({ ok: false, error: '请求体不是有效的 JSON' }, 400);
     }
 
     const authHeaders = {
@@ -97,34 +125,33 @@ export default {
       'User-Agent': 'GetAshore-Worker',
     };
 
-    // 读取当前 records.json，拿到内容与 sha
-    let records = [];
-    let sha = null;
-    try {
-      const getResponse = await fetch(FILE_URL(GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH), {
-        headers: authHeaders,
-      });
-
-      if (getResponse.status === 404) {
-        records = [];
-      } else if (!getResponse.ok) {
-        const bodyText = await getResponse.text();
-        return jsonResponse(
-          { ok: false, error: `读取记录失败: ${getResponse.status}`, detail: bodyText.slice(0, 400) },
-          502
-        );
-      } else {
-        const fileData = await getResponse.json();
-        sha = fileData.sha;
-        try {
-          records = JSON.parse(base64Decode(fileData.content));
-        } catch (error) {
-          return jsonResponse({ ok: false, error: 'records.json 内容解析失败' }, 502);
-        }
+    // GET：返回仓库 main 分支最新的 records（避免 GitHub Pages 部署延迟导致数据滞后）
+    if (request.method === 'GET') {
+      const result = await readRecords(env, authHeaders);
+      if (!result.ok) {
+        return jsonResponse({ ok: false, error: result.error, detail: result.detail }, 502);
       }
-    } catch (error) {
-      return jsonResponse({ ok: false, error: '读取 records.json 失败', detail: String(error) }, 500);
+      return jsonResponse({ ok: true, records: result.records });
     }
+
+    if (request.method !== 'POST') {
+      return jsonResponse({ ok: false, error: '仅支持 GET / POST 请求' }, 405);
+    }
+
+    let payload;
+    try {
+      payload = await request.json();
+    } catch (error) {
+      return jsonResponse({ ok: false, error: '请求体不是有效的 JSON' }, 400);
+    }
+
+    // 读取当前 records.json
+    const readResult = await readRecords(env, authHeaders);
+    if (!readResult.ok) {
+      return jsonResponse({ ok: false, error: readResult.error, detail: readResult.detail }, 502);
+    }
+    const records = readResult.records;
+    const sha = readResult.sha;
 
     let nextRecords;
     let commitMessage;
@@ -162,32 +189,15 @@ export default {
     }
 
     // 写回文件
-    try {
-      const putResponse = await fetch(FILE_URL(GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH), {
-        method: 'PUT',
-        headers: {
-          ...authHeaders,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: commitMessage,
-          content: base64Encode(JSON.stringify(nextRecords, null, 2)),
-          sha,
-        }),
-      });
-
-      if (!putResponse.ok) {
-        const detail = await putResponse.text();
-        return jsonResponse({ ok: false, error: `写入记录失败: ${putResponse.status}`, detail }, 502);
-      }
-
-      return jsonResponse({
-        ok: true,
-        total: nextRecords.length,
-        ...(deletedRecord ? { deleted: { id: deletedRecord.id } } : {}),
-      });
-    } catch (error) {
-      return jsonResponse({ ok: false, error: 'Worker 内部错误', detail: String(error) }, 500);
+    const writeResult = await writeRecords(env, authHeaders, sha, nextRecords, commitMessage);
+    if (!writeResult.ok) {
+      return jsonResponse({ ok: false, error: writeResult.error, detail: writeResult.detail }, 502);
     }
+
+    return jsonResponse({
+      ok: true,
+      total: nextRecords.length,
+      ...(deletedRecord ? { deleted: { id: deletedRecord.id } } : {}),
+    });
   },
 };

@@ -61,6 +61,30 @@ async function loadJson(path) {
   return res.json();
 }
 
+// 优先从 Worker 读取仓库 main 的最新记录（GitHub Pages 静态文件有部署延迟，可能滞后）
+async function fetchRemoteRecords() {
+  if (WORKER_URL) {
+    try {
+      const res = await fetch(WORKER_URL, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.records)) {
+          return data.records;
+        }
+      }
+    } catch (error) {
+      // 网络或 Worker 不可用时，退回静态文件
+    }
+  }
+  return loadJson('./data/records.json');
+}
+
+async function reloadRecordsAndRender() {
+  const remote = await fetchRemoteRecords();
+  state.records = mergeRecords(remote);
+  renderAll();
+}
+
 function getLocalRecords() {
   try {
     const records = JSON.parse(localStorage.getItem(LOCAL_RECORDS_KEY) || '[]');
@@ -1104,8 +1128,7 @@ function bindEvents() {
       return;
     }
     removeLocalRecordById(String(id));
-    state.records = state.records.filter((record) => String(record.id) !== String(id));
-    renderAll();
+    await reloadRecordsAndRender();
   });
 
   document.getElementById('overviewDate').addEventListener('change', (e) => {
@@ -1181,10 +1204,8 @@ function bindEvents() {
         state.records.push(newRecord);
         form.reset();
         document.getElementById('recordDate').valueAsDate = new Date();
-        formMessage.textContent = '记录已保存到 GitHub，正在刷新数据...';
-        const newRecords = await loadJson('./data/records.json');
-        state.records = mergeRecords(newRecords);
-        renderAll();
+        formMessage.textContent = '记录已保存到 GitHub，正在同步最新数据...';
+        await reloadRecordsAndRender();
       } catch (error) {
         formMessage.textContent = '提交失败，请检查网络或 Worker 配置';
       }
@@ -1202,10 +1223,9 @@ function bindEvents() {
   document.getElementById('refreshDataBtn').addEventListener('click', async () => {
     const newUsers = await loadJson('./data/users.json');
     const newModules = await loadJson('./data/modules.json');
-    const newRecords = await loadJson('./data/records.json');
     state.users = newUsers;
     state.modules = newModules;
-    state.records = mergeRecords(newRecords);
+    await reloadRecordsAndRender();
     populateFilters();
     renderAll();
     bindHeatmapTooltip();
@@ -1244,7 +1264,7 @@ async function init() {
   try {
     state.users = await loadJson('./data/users.json');
     state.modules = await loadJson('./data/modules.json');
-    state.records = mergeRecords(await loadJson('./data/records.json'));
+    state.records = mergeRecords(await fetchRemoteRecords());
     populateFilters();
     bindEvents();
     setActiveView(state.activeView);
