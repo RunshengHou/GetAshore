@@ -731,12 +731,8 @@ function renderProfileOverview() {
   const totalC = records.reduce((sum, r) => sum + Number(r.correctCount || 0), 0);
   const avgAccuracy = totalQ ? totalC / totalQ : 0;
   const dates = new Set(records.map((r) => r.date));
-  const durationSeconds = records.reduce(
-    (sum, r) => sum + Number(r.durationMinutes || 0) * 60,
-    0
-  );
-  const avgSeconds = totalQ ? durationSeconds / totalQ : 0;
 
+  // 跨模块混在一起统计平均用时没有意义，仅模块内平均用时有效，因此不再展示该卡
   const personalCards = [
     {
       label: '累计刷题总数',
@@ -755,12 +751,6 @@ function renderProfileOverview() {
       value: formatPercent(avgAccuracy),
       sub: `基于 ${totalQ} 道题`,
       tone: 'green',
-    },
-    {
-      label: '平均用时',
-      value: `${avgSeconds.toFixed(0)}<small> 秒/题</small>`,
-      sub: `每题平均耗时 · 共 ${records.length} 条记录`,
-      tone: 'purple',
     },
   ];
 

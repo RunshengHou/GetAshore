@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260902l" />
+    <link rel="stylesheet" href="styles.css?v=20260902m" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
   </head>
@@ -138,18 +138,17 @@
 
               <div id="profileOverview" class="profile-overview"></div>
 
-              <div class="profile-chart-grid">
-                <div class="profile-chart-col">
-                  <div class="profile-section-title">答题总数趋势</div>
-                  <div class="profile-trend-chart">
-                    <canvas id="profileTrendChart"></canvas>
-                  </div>
+              <div class="profile-trend">
+                <div class="profile-section-title">答题总数趋势</div>
+                <div class="profile-trend-chart">
+                  <canvas id="profileTrendChart"></canvas>
                 </div>
-                <div class="profile-chart-col">
-                  <div class="profile-section-title">各模块正确率（累计）</div>
-                  <div class="profile-trend-chart">
-                    <canvas id="profileRadarChart"></canvas>
-                  </div>
+              </div>
+
+              <div class="profile-radar">
+                <div class="profile-section-title">各模块正确率（累计）</div>
+                <div class="profile-radar-chart">
+                  <canvas id="profileRadarChart"></canvas>
                 </div>
               </div>
 
@@ -236,6 +235,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=20260902l"></script>
+    <script src="app.js?v=20260902m"></script>
   </body>
 </html>
