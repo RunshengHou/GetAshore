@@ -803,7 +803,7 @@ function renderModuleGrid() {
                 ${records.length
                   ? `
                 <div class="module-chart-panel module-chart-panel--wide">
-                  <div class="module-chart-title">模块每次提交答题数</div>
+                  <div class="module-chart-title">模块答题总数趋势</div>
                   <div class="module-chart-wrap"><canvas id="moduleQuestionTrendChart"></canvas></div>
                 </div>
                 <div class="module-chart-panel">
@@ -894,9 +894,19 @@ function renderModuleCharts() {
 
   const palette = MODULE_CHART_COLORS[module.id] || ['#4e9cf5', '#7cb9f8', '#c0ddff'];
   const labels = submissions.map((record) => record.date);
-  const questionTotals = submissions.map((record) => Number(record.questionCount || 0));
   const accuracyValues = submissions.map((record) => getAccuracy(record));
   const durationValues = submissions.map((record) => getAverageSeconds(record));
+
+  // 答题总数图保持“按天累计”口径：每天累计该模块的提交数量
+  const moduleRecords = state.records.filter(
+    (record) => record.person === user.name && record.module === module.id
+  );
+  const dateList = getDateList(state.records);
+  const questionTotals = dateList.map((date) =>
+    moduleRecords
+      .filter((record) => record.date === date)
+      .reduce((sum, record) => sum + Number(record.questionCount || 0), 0)
+  );
 
   destroyModuleCharts();
 
@@ -914,9 +924,9 @@ function renderModuleCharts() {
   state.charts.moduleQuestionTrend = new Chart(document.getElementById('moduleQuestionTrendChart'), {
     type: 'line',
     data: {
-      labels,
+      labels: dateList,
       datasets: [{
-        label: '每次提交答题数',
+        label: '模块答题总数',
         data: questionTotals,
         borderColor: palette[0],
         backgroundColor: `${palette[0]}22`,
@@ -933,7 +943,6 @@ function renderModuleCharts() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            title: tooltipTitle,
             label: (ctx) => `答题数：${ctx.parsed.y} 题`,
           },
         },
