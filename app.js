@@ -127,7 +127,6 @@ function renderSummary() {
 function renderHeatmap() {
   const container = document.getElementById('heatmap');
   const allDates = getDateList(state.records);
-  const startDate = allDates.length ? new Date(allDates[0]) : new Date();
   const endDate = allDates.length ? new Date(allDates[allDates.length - 1]) : new Date();
   const daysToRender = 84;
   const dayKeys = [];
@@ -138,14 +137,19 @@ function renderHeatmap() {
     dayKeys.push(date.toISOString().slice(0, 10));
   }
 
+  const weeksInView = Math.ceil(daysToRender / 7);
+
   container.innerHTML = state.users
     .map((user) => {
       const cells = dayKeys
-        .map((date) => {
+        .map((date, index) => {
           const val = state.records
             .filter((r) => r.person === user.name && r.date === date)
             .reduce((sum, item) => sum + Number(item.questionCount || 0), 0);
           const level = val >= 40 ? 4 : val >= 25 ? 3 : val >= 10 ? 2 : val >= 4 ? 1 : 0;
+          const weekIndex = Math.floor(index / 7);
+          const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+
           return `
             <div
               class="heatmap-day level-${level}"
@@ -154,6 +158,7 @@ function renderHeatmap() {
               data-count="${val}"
               title="${user.name} / ${date} / ${val}题"
               aria-label="${user.name} 在 ${date} 刷题 ${val} 题"
+              style="grid-column: ${weekIndex + 1}; grid-row: ${dayOfWeek + 1};"
             ></div>
           `;
         })
@@ -162,7 +167,7 @@ function renderHeatmap() {
       return `
         <div class="heatmap-user-row">
           <div class="heatmap-label">${user.name}</div>
-          <div class="heatmap-grid" style="grid-template-columns: repeat(${daysToRender}, 12px);">${cells}</div>
+          <div class="heatmap-grid" style="grid-template-columns: repeat(${weeksInView}, 12px); grid-template-rows: repeat(7, 12px);">${cells}</div>
         </div>
       `;
     })
@@ -538,6 +543,32 @@ function setActiveView(viewName) {
   }
 }
 
+function bindHeatmapTooltip() {
+  const heatmapDays = document.querySelectorAll('.heatmap-day');
+  const tooltip = document.createElement('div');
+  tooltip.className = 'heatmap-tooltip';
+  document.body.appendChild(tooltip);
+
+  heatmapDays.forEach((day) => {
+    day.addEventListener('mouseenter', () => {
+      const date = day.dataset.date;
+      const count = day.dataset.count;
+      tooltip.textContent = `${date} · ${count} 题`;
+      tooltip.style.display = 'block';
+    });
+
+    day.addEventListener('mousemove', (e) => {
+      const rect = day.getBoundingClientRect();
+      tooltip.style.left = `${rect.left + rect.width / 2}px`;
+      tooltip.style.top = `${rect.top - 36}px`;
+    });
+
+    day.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+  });
+}
+
 function bindEvents() {
   document.querySelectorAll('.nav-item').forEach((button) => {
     button.addEventListener('click', () => {
@@ -593,12 +624,14 @@ function bindEvents() {
     state.records = newRecords;
     populateFilters();
     renderAll();
+    bindHeatmapTooltip();
   });
 }
 
 function renderAll() {
   renderSummary();
   renderHeatmap();
+  bindHeatmapTooltip();
   renderRadarChart();
   renderLineChart();
   renderBarChart();
