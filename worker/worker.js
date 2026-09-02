@@ -29,6 +29,24 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+function base64Encode(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+function base64Decode(b64) {
+  const binary = atob(b64.replace(/\n/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 function validateRecord(record) {
   if (!record || typeof record !== 'object') return '记录格式不正确';
   if (!ALLOWED_PERSONS.has(record.person)) return '人物不合法';
@@ -105,9 +123,8 @@ export default {
       } else {
         const fileData = await getResponse.json();
         sha = fileData.sha;
-        const content = atob(fileData.content.replace(/\n/g, ''));
         try {
-          records = JSON.parse(content);
+          records = JSON.parse(base64Decode(fileData.content));
         } catch (error) {
           return jsonResponse({ ok: false, error: 'records.json 内容解析失败' }, 502);
         }
@@ -135,7 +152,7 @@ export default {
         },
         body: JSON.stringify({
           message: `feat: add study record ${newRecord.date} ${newRecord.person}`,
-          content: btoa(JSON.stringify(records, null, 2)),
+          content: base64Encode(JSON.stringify(records, null, 2)),
           sha,
         }),
       });
