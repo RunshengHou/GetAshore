@@ -183,7 +183,9 @@ function renderHeatmap() {
       tooltip: {
         formatter: (params) => {
           if (params.componentSubType === 'heatmap') {
-            return `${params.value[0]}<br/>${params.value[1]} 题`;
+            const date = params.value[0];
+            const monthDay = date.slice(5); // 取 MM-DD
+            return `${monthDay}<br/>${params.value[1]} 题`;
           }
           return '';
         },
@@ -201,9 +203,8 @@ function renderHeatmap() {
           borderWidth: 1,
         },
         dayLabel: {
-          nameMap: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-          firstDay: 1,
-          interval: 1,
+          nameMap: ['', 'Mon', '', 'Wed', '', 'Fri', ''],
+          firstDay: 0,
           textStyle: {
             color: '#94a3b8',
             fontSize: 11,
