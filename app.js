@@ -12,11 +12,11 @@ const PERSON_COLORS = {
 };
 
 const MODULE_COLORS = {
-  politics: '#4f46e5',
-  quantity: '#10b981',
-  language: '#f59e0b',
-  logic: '#ef4444',
-  data: '#8b5cf6',
+  politics: '#2f5ae0',
+  quantity: '#1f9d8a',
+  language: '#d97706',
+  logic: '#d9485f',
+  data: '#6d5ef2',
 };
 
 const state = {
@@ -256,13 +256,13 @@ function renderBarChart() {
         .filter((r) => r.person === name && r.date === today && r.module === module.id)
         .reduce((sum, item) => sum + Number(item.questionCount || 0), 0)
     ),
-    backgroundColor: `${MODULE_COLORS[module.id]}cc`,
+    backgroundColor: MODULE_COLORS[module.id],
     borderColor: MODULE_COLORS[module.id],
-    borderWidth: 1.5,
-    borderRadius: 10,
+    borderWidth: 0,
+    borderRadius: 0,
     borderSkipped: false,
     stack: 'questions',
-    barPercentage: 0.72,
+    barPercentage: 0.76,
     categoryPercentage: 0.7,
   }));
 
