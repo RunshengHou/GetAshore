@@ -1145,6 +1145,23 @@ td.num {
   color: var(--text);
 }
 
+.duration-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.duration-inputs input {
+  min-width: 0;
+}
+
+.duration-unit {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .form-actions {
   margin-top: 18px;
   display: flex;

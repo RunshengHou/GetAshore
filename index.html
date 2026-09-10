@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>上岸学习数据看板</title>
-    <link rel="stylesheet" href="styles.css?v=20260902o" />
+    <link rel="stylesheet" href="styles.css?v=20260902p" />
   </head>
   <body>
     <div class="app-layout">
@@ -215,8 +215,13 @@
                     <input type="number" id="correctCount" min="0" required />
                   </label>
                   <label>
-                    <span>完成时长（分钟）</span>
-                    <input type="number" id="durationMinutes" min="1" required />
+                    <span>完成时长（分 / 秒）</span>
+                    <div class="duration-inputs">
+                      <input type="number" id="durationMin" min="0" step="1" placeholder="分" required />
+                      <span class="duration-unit">分</span>
+                      <input type="number" id="durationSec" min="0" max="59" step="1" placeholder="秒" value="0" />
+                      <span class="duration-unit">秒</span>
+                    </div>
                   </label>
                 </div>
                 <div class="form-actions">
@@ -232,6 +237,6 @@
 
     <!-- 图表库放 body 末尾：先渲染页面骨架，再加载图表，避免首屏停顿 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=20260902o"></script>
+    <script src="app.js?v=20260902p"></script>
   </body>
 </html>

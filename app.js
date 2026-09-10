@@ -206,7 +206,10 @@ function formatPercent(value) {
 }
 
 function formatMinutes(minutes) {
-  return `${Number(minutes).toFixed(1)} 分`;
+  const totalSeconds = Math.max(0, Math.round(Number(minutes || 0) * 60));
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return s ? `${m} 分 ${s} 秒` : `${m} 分`;
 }
 
 function getAccuracy(record) {
@@ -1404,10 +1407,29 @@ function bindEvents() {
     const form = e.target;
     const questionCount = Number(document.getElementById('questionCount').value);
     const correctCount = Number(document.getElementById('correctCount').value);
+    const durationMin = Number(document.getElementById('durationMin').value || 0);
+    const durationSec = Number(document.getElementById('durationSec').value || 0);
     const formMessage = document.getElementById('formMessage');
 
     if (correctCount > questionCount) {
       formMessage.textContent = '正确数量不能大于题目数量';
+      return;
+    }
+
+    if (!Number.isInteger(durationSec) || durationSec < 0 || durationSec > 59) {
+      formMessage.textContent = '秒数请在 0-59 之间';
+      return;
+    }
+
+    if (durationMin < 0 || !Number.isInteger(durationMin)) {
+      formMessage.textContent = '分钟数请填写非负整数';
+      return;
+    }
+
+    // 统一换算为分钟（含小数）存储，兼容原有统计与图表
+    const durationMinutes = durationMin + durationSec / 60;
+    if (durationMinutes <= 0) {
+      formMessage.textContent = '完成时长必须大于 0';
       return;
     }
 
@@ -1418,7 +1440,7 @@ function bindEvents() {
       module: document.getElementById('recordModule').value,
       questionCount,
       correctCount,
-      durationMinutes: Number(document.getElementById('durationMinutes').value),
+      durationMinutes,
       note: '',
     };
 
