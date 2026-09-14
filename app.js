@@ -394,6 +394,37 @@ function isCompactHeatmap() {
   return window.matchMedia('(max-width: 720px)').matches;
 }
 
+// 热力图格子尺寸自适应：格子固定 12px 会在窄面板下溢出被裁掉（最新数据看不见），
+// 因此按容器可用宽度反推 --hm-cell / --hm-gap / --hm-dayw，保证整窗口始终完整可见。
+const HEATMAP_CELL_MAX = 12;
+const HEATMAP_CELL_MIN = 5;
+const HEATMAP_LABEL_WIDTH = 24; // 与 .heatmap-label 的 width 保持一致
+const HEATMAP_ROW_GAP = 12; // .heatmap-user-row 的列间距
+const HEATMAP_DAYS_GAP = 8; // .heatmap-calendar 的列间距
+
+function getHeatmapMetrics(totalWeeks) {
+  const container = document.getElementById('heatmapContainer');
+  // 可用宽度 = 容器宽度 - 人物标签列 - 行间距
+  const available = (container.clientWidth || 0) - HEATMAP_LABEL_WIDTH - HEATMAP_ROW_GAP;
+  if (available <= 0) {
+    // 容器不可见（宽度为 0）时先给默认值，切回总览会重新渲染
+    return { cell: HEATMAP_CELL_MAX, gap: 4, dayw: 27 };
+  }
+
+  // 从最大尺寸往下找第一个能放下的组合
+  for (let cell = HEATMAP_CELL_MAX; cell >= HEATMAP_CELL_MIN; cell -= 1) {
+    const gap = Math.max(1, Math.round(cell / 3));
+    const dayw = Math.min(27, Math.max(20, Math.round(cell * 2.25)));
+    const needed = totalWeeks * cell + (totalWeeks - 1) * gap + dayw + HEATMAP_DAYS_GAP;
+    if (needed <= available) {
+      return { cell, gap, dayw };
+    }
+  }
+
+  // 极窄容器：退回最小尺寸，由 .heatmap-content 的横向滚动兜底
+  return { cell: HEATMAP_CELL_MIN, gap: 1, dayw: 20 };
+}
+
 function renderHeatmap() {
   const container = document.getElementById('heatmapContainer');
   container.innerHTML = '';
@@ -414,7 +445,15 @@ function renderHeatmap() {
   const gridEnd = new Date(today);
   gridEnd.setDate(today.getDate() + (6 - today.getDay()));
 
-  const totalWeeks = Math.floor((gridEnd - gridStart) / dayMs / 7) + 1;
+  // gridStart 为周日、gridEnd 为周六，两者含末日的跨度必为 7 的整数倍；
+  // 先 round 到整天再除，既得到正确的列数（含最后一列），也抵消夏令时 ±1 小时偏差
+  const totalWeeks = Math.max(1, Math.round((gridEnd - gridStart + dayMs) / dayMs / 7));
+
+  // 按当前容器宽度决定格子尺寸，避免右侧（最新）部分被裁掉
+  const { cell: hmCell, gap: hmGap, dayw: hmDayw } = getHeatmapMetrics(totalWeeks);
+  container.style.setProperty('--hm-cell', `${hmCell}px`);
+  container.style.setProperty('--hm-gap', `${hmGap}px`);
+  container.style.setProperty('--hm-dayw', `${hmDayw}px`);
 
   const tooltip = document.getElementById('heatmapTooltip') || document.createElement('div');
   tooltip.id = 'heatmapTooltip';
@@ -439,7 +478,8 @@ function renderHeatmap() {
     const current = new Date(gridStart);
     while (current <= today) {
       const dateStr = formatLocalDate(current);
-      const weekIndex = Math.floor((current - gridStart) / dayMs / 7);
+      // 先 round 到整天再算周序，抵消夏令时造成的 ±1 小时偏差（否则整周错列）
+      const weekIndex = Math.floor(Math.round((current - gridStart) / dayMs) / 7);
       const dayIndex = current.getDay();
       const count = dataMap.get(dateStr) || 0;
       const level = count === 0 ? 0 : Math.min(4, Math.ceil(count / 10));
@@ -1488,14 +1528,16 @@ function bindEvents() {
     await reloadRecordsAndRender();
   });
 
-  // 跨移动端断点时自动重绘热力图，避免布局残留
-  let lastCompactHeatmap = isCompactHeatmap();
+  // 热力图宽度自适应：窗口尺寸变化后重绘（防抖）。
+  // 总览视图不可见时跳过，避免量到 0 宽度算出错误尺寸（回到总览时会重新渲染）。
+  let heatmapResizeTimer = null;
   window.addEventListener('resize', () => {
-    const compact = isCompactHeatmap();
-    if (compact !== lastCompactHeatmap) {
-      lastCompactHeatmap = compact;
+    if (heatmapResizeTimer) clearTimeout(heatmapResizeTimer);
+    heatmapResizeTimer = setTimeout(() => {
+      const overviewSection = document.querySelector('.view-section[data-view="overview"]');
+      if (!overviewSection || !overviewSection.classList.contains('active')) return;
       renderHeatmap();
-    }
+    }, 150);
   });
 }
 

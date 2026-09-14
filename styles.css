@@ -457,7 +457,10 @@ select {
 .heatmap-content {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  /* 格子尺寸由 JS 自适应计算，正常不会溢出；
+     万一溢出也允许横向滚动，避免最新数据被静默裁掉看不见 */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .heatmap-months {
@@ -470,7 +473,7 @@ select {
 }
 
 .month-label {
-  font-size: 11px;
+  font-size: clamp(8px, calc(var(--hm-cell) * 0.9), 11px);
   font-weight: 700;
   color: var(--muted);
   white-space: nowrap;
@@ -491,7 +494,7 @@ select {
 }
 
 .day-label {
-  font-size: 10px;
+  font-size: clamp(7px, calc(var(--hm-cell) * 0.85), 10px);
   font-weight: 600;
   color: var(--muted);
   text-align: right;
@@ -1252,13 +1255,5 @@ td.num {
 
   .sidebar {
     padding-bottom: 12px;
-  }
-}
-
-@media (max-width: 720px) {
-  #heatmapContainer {
-    --hm-cell: 7px;
-    --hm-gap: 2px;
-    --hm-dayw: 20px;
   }
 }
