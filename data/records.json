@@ -78,5 +78,15 @@
     "correctCount": 24,
     "durationMinutes": 24.633333333333333,
     "note": ""
+  },
+  {
+    "id": 1790601310940,
+    "date": "2026-09-28",
+    "person": "升",
+    "module": "language",
+    "questionCount": 46,
+    "correctCount": 27,
+    "durationMinutes": 31.833333333333332,
+    "note": ""
   }
 ]
