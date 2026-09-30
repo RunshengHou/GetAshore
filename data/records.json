@@ -98,5 +98,15 @@
     "correctCount": 8,
     "durationMinutes": 34.5,
     "note": ""
+  },
+  {
+    "id": 1790781730484,
+    "date": "2026-09-30",
+    "person": "强",
+    "module": "language",
+    "questionCount": 20,
+    "correctCount": 8,
+    "durationMinutes": 38,
+    "note": ""
   }
 ]
